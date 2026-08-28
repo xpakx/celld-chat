@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  rustfs:
+    image: docker.io/rustfs/rustfs:latest
+    container_name: rustfs
+    restart: unless-stopped
+    # workaround for podman, remove for docker
+    user: "0:0"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfs-data:/data
+    environment:
+      - RUSTFS_ACCESS_KEY=access-key
+      - RUSTFS_SECRET_KEY=ultra-safe-key
+      - RUSTFS_ADDRESS=:9000
+      - RUSTFS_CONSOLE_ADDRESS=:9001
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_OBS_LOGGER_LEVEL=error
+      - RUSTFS_OBS_LOG_DIRECTORY=/var/log/rustfs/
+    command: /data
+
+  celld:
+    image: ghcr.io/denoland/celld:latest
+    container_name: celld
+    ports:
+      - "8080:8080"
+    environment:
+      AWS_ACCESS_KEY_ID: access-key
+      AWS_SECRET_ACCESS_KEY: ultra-safe-key
+      CELLD_WATCH: /var/lib/celld/state
+    volumes:
+      - celld-state:/var/lib/celld
+    command: >
+      --bucket s3://cells-bucket
+      --endpoint http://rustfs:9000
+      --region us-east-1
+      --listen 0.0.0.0:8080
+      --advertise 127.0.0.1:8081
+      --internal-listen 127.0.0.1:8081
+
+volumes:
+  rustfs-data:
+  celld-state:
+

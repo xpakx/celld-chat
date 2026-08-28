@@ -12,4 +12,12 @@
 	},
 	"upload_source_maps": true
 	*/
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "CHAT_ROOM",
+				"class_name": "ChatRoom"
+			}
+		]
+	},
 }

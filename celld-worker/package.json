@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "deploy": "wrangler deploy",
+    "deploy": "AWS_ACCESS_KEY_ID=access-key AWS_SECRET_ACCESS_KEY=ultra-safe-key celld deploy . --bucket s3://cells-bucket --endpoint http://localhost:9000 --region us-east-1",
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "test": "vitest",

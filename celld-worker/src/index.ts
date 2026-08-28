@@ -1,18 +1,28 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.jsonc`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
-
 export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		return new Response("Hello World!");
+	async fetch(request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {
+		const url = new URL(request.url);
+
+		if (url.pathname === "/ws") {
+			const upgradeHeader = request.headers.get("Upgrade");
+			if (upgradeHeader !== "websocket") {
+				return new Response("Expected Upgrade: websocket", { status: 426 });
+			}
+
+			const pair = new WebSocketPair();
+			const [client, server] = Object.values(pair);
+
+			server.accept();
+
+			server.addEventListener("message", (event) => {
+				server.send(`Echo: ${event.data}`);
+			});
+
+			return new Response(null, {
+				status: 101,
+				webSocket: client,
+			});
+		}
+
+		return new Response("Not found", { status: 404 });
 	},
 } satisfies ExportedHandler<Env>;

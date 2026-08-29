@@ -37,10 +37,13 @@ update msg model =
                 OnInput newMsg -> 
                         { model | inputMsg = newMsg }
                 OnClick ->
-                        { model 
-                        | msgs = model.msgs ++ [ model.inputMsg ],
-                        inputMsg = ""
-                        }
+                        if String.isEmpty (String.trim model.inputMsg) then
+                                model
+                        else
+                                { model 
+                                | msgs = model.msgs ++ [ model.inputMsg ],
+                                inputMsg = ""
+                                }
 
 initialModel : Model
 initialModel = {

@@ -12,7 +12,8 @@ port changeStatus : (String -> msg) -> Sub msg
 type alias Model = {
         inputMsg : String,
         msgs : List String,
-        status: String
+        status: String,
+        statusClass: String
         }
 
 type Msg
@@ -27,14 +28,16 @@ view model =
         [ h1 [] [ text "Chat" ]
         , p []
             [ 
-                    text model.status,
-                    div [] 
-                    (List.map (\msg -> Html.li [] [ text msg ]) model.msgs)
+                    div [class model.statusClass] [text model.status],
+                    div [id "log"] 
+                    (List.map (\msg -> Html.div [] [ text msg ]) model.msgs)
                     ,
-                    input [ placeholder "Type a message...",
-                    value model.inputMsg,
-                    onInput OnInput ] [],
-                    button [ onClick OnClick] [ text "Send" ]
+                    div [class "controls"] [
+                            input [ placeholder "Type a message...",
+                            value model.inputMsg,
+                            onInput OnInput ] [],
+                            button [ onClick OnClick] [ text "Send" ]
+                    ]
             ]
         ]
 
@@ -61,7 +64,13 @@ update msg model =
                         )
                 StatusChanged status ->
                         (
-                                { model | status = status },
+                                { model | status = status,
+                                statusClass = case status of
+                                        "Connected" -> "status connected"
+                                        "Disconnected" -> "status disconnected"
+                                        _ -> "status"
+
+                                },
                                 Cmd.none
                         )
 
@@ -69,7 +78,8 @@ initialModel : Model
 initialModel = {
         inputMsg = "",
         msgs = [],
-        status = "Disconnected"
+        status = "Disconnected",
+        statusClass = "status disconnected"
         }
 
 init: () -> (Model, Cmd Msg)

@@ -7,16 +7,19 @@ import Html.Events exposing (..)
 
 port sendMessage : String -> Cmd msg
 port getMessage : (String -> msg) -> Sub msg
+port changeStatus : (String -> msg) -> Sub msg
 
 type alias Model = {
         inputMsg : String,
-        msgs : List String
+        msgs : List String,
+        status: String
         }
 
 type Msg
     = OnClick
     | OnInput String
     | MessageReceived String
+    | StatusChanged String
 
 view : Model -> Html Msg
 view model =
@@ -24,7 +27,7 @@ view model =
         [ h1 [] [ text "Chat" ]
         , p []
             [ 
-                    text "Disconnected",
+                    text model.status,
                     div [] 
                     (List.map (\msg -> Html.li [] [ text msg ]) model.msgs)
                     ,
@@ -56,11 +59,17 @@ update msg model =
                         { model | msgs = model.msgs ++ [ newMsg ] }, 
                         Cmd.none
                         )
+                StatusChanged status ->
+                        (
+                                { model | status = status },
+                                Cmd.none
+                        )
 
 initialModel : Model
 initialModel = {
         inputMsg = "",
-        msgs = []
+        msgs = [],
+        status = "Disconnected"
         }
 
 init: () -> (Model, Cmd Msg)
@@ -68,7 +77,10 @@ init _ = ( initialModel, Cmd.none )
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-        getMessage MessageReceived
+        Sub.batch [
+        getMessage MessageReceived,
+        changeStatus StatusChanged
+        ]
 
 main = Browser.element {
         init = init,

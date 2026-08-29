@@ -20,6 +20,7 @@
 
     ws.onopen = () => {
         app.ports.getMessage.send("Connected successfully!");
+        app.ports.changeStatus.send("Connected");
     };
 
     ws.onmessage = (event) => {
@@ -33,6 +34,7 @@
 
     ws.onclose = () => {
         app.ports.getMessage.send("Connection closed.");
+        app.ports.changeStatus.send("Disconnected");
     };
 
     app.ports.sendMessage.subscribe(function(message) {

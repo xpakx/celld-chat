@@ -6,6 +6,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
 port sendMessage : String -> Cmd msg
+port getMessage : (String -> msg) -> Sub msg
 
 type alias Model = {
         inputMsg : String,
@@ -15,6 +16,7 @@ type alias Model = {
 type Msg
     = OnClick
     | OnInput String
+    | MessageReceived String
 
 view : Model -> Html Msg
 view model =
@@ -49,6 +51,11 @@ update msg model =
                                 },
                                 sendMessage model.inputMsg
                                 )
+                MessageReceived newMsg ->
+                        ( 
+                        { model | msgs = model.msgs ++ [ newMsg ] }, 
+                        Cmd.none
+                        )
 
 initialModel : Model
 initialModel = {
@@ -59,9 +66,13 @@ initialModel = {
 init: () -> (Model, Cmd Msg)
 init _ = ( initialModel, Cmd.none )
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+        getMessage MessageReceived
+
 main = Browser.element {
         init = init,
         view = view,
         update = update,
-        subscriptions = \_ -> Sub.none
+        subscriptions = subscriptions
         }

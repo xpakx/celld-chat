@@ -15,30 +15,29 @@
     });
 
     const WS_URL = "ws://localhost:8080/ws"; 
-    console.log("Connecting to " + WS_URL + "...");
+    app.ports.getMessage.send("Connecting to " + WS_URL + "...");
     const ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
-        console.log("Connected successfully!");
+        app.ports.getMessage.send("Connected successfully!");
     };
 
     ws.onmessage = (event) => {
-        console.log("Received: " + event.data);
+        app.ports.getMessage.send(event.data);
     };
 
     ws.onerror = (error) => {
-        console.log("WebSocket Error occurred.", true);
+        app.ports.getMessage.send("WebSocket Error occurred.");
         console.log(error);
     };
 
     ws.onclose = () => {
-        console.log("Connection closed.");
+        app.ports.getMessage.send("Connection closed.");
     };
 
     app.ports.sendMessage.subscribe(function(message) {
 	    if (ws.readyState == WebSocket.OPEN) {
 	        ws.send(message);
-                console.log("Sent: ", message);
 	    }
     });
   </script>

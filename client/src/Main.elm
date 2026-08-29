@@ -1,9 +1,11 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+
+port sendMessage : String -> Cmd msg
 
 type alias Model = {
         inputMsg : String,
@@ -31,19 +33,22 @@ view model =
             ]
         ]
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
         case msg of 
                 OnInput newMsg -> 
-                        { model | inputMsg = newMsg }
+                        ({ model | inputMsg = newMsg }, Cmd.none)
                 OnClick ->
                         if String.isEmpty (String.trim model.inputMsg) then
-                                model
+                                (model, Cmd.none)
                         else
-                                { model 
+                                (
+                                        { model 
                                 | msgs = model.msgs ++ [ model.inputMsg ],
                                 inputMsg = ""
-                                }
+                                },
+                                sendMessage model.inputMsg
+                                )
 
 initialModel : Model
 initialModel = {
@@ -51,8 +56,12 @@ initialModel = {
         msgs = []
         }
 
-main = Browser.sandbox {
-        init = initialModel,
+init: () -> (Model, Cmd Msg)
+init _ = ( initialModel, Cmd.none )
+
+main = Browser.element {
+        init = init,
         view = view,
-        update = update
+        update = update,
+        subscriptions = \_ -> Sub.none
         }

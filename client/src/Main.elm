@@ -4,6 +4,8 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Json.Decode as Decode exposing (Decoder, Value)
+import Json.Encode as Encode
 
 port sendMessage : String -> Cmd msg
 port getMessage : (String -> msg) -> Sub msg
@@ -88,9 +90,39 @@ init _ = ( initialModel, Cmd.none )
 subscriptions : Model -> Sub Msg
 subscriptions model =
         Sub.batch [
-        getMessage MessageReceived,
+        getMessage handleIncomingMsg,
         changeStatus StatusChanged
         ]
+
+typeDecoder : Decoder String
+typeDecoder =
+    Decode.field "type" Decode.string
+
+messageContentDecoder : Decoder String
+messageContentDecoder =
+    typeDecoder
+        |> Decode.andThen payloadDecoder
+
+payloadDecoder : String -> Decoder String
+payloadDecoder messageType =
+    case messageType of
+        "message" ->
+            Decode.field "content" Decode.string
+        "ack" ->
+            Decode.field "content" Decode.string
+        "history" ->
+            Decode.field "messages" (Decode.list Decode.string)
+            |> Decode.map (String.join ", ")
+        _ ->
+            Decode.succeed "not implemented"
+
+handleIncomingMsg : String -> Msg
+handleIncomingMsg rawJson =
+    case Decode.decodeString messageContentDecoder rawJson of
+        Ok stringValue ->
+            MessageReceived stringValue
+        Err _ ->
+            MessageReceived rawJson
 
 main = Browser.element {
         init = init,

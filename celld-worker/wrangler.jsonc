@@ -20,4 +20,15 @@
 			}
 		]
 	},
+	// this is a preferred version for cloudflare,
+	// but it seems celld doesn't support it yet
+	/*"exports": {
+		"ChatRoom": {
+			"type": "durable-object",
+			"storage": "sqlite"
+		}
+	}*/
+	"migrations": [
+		{ "tag": "v1", "new_sqlite_classes": ["ChatRoom"] }
+	]
 }

@@ -18,6 +18,21 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 export class ChatRoom extends DurableObject {
+	constructor(ctx: DurableObjectState, env: Env) {
+		super(ctx, env);
+
+		this.ctx.blockConcurrencyWhile(async () => {
+			this.ctx.storage.sql.exec(`
+				CREATE TABLE IF NOT EXISTS messages (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					content TEXT,
+					author TEXT,
+					timestamp TEXT
+				)
+			`);
+		});
+	}
+
 	async fetch(request: Request): Promise<Response> {
 		const upgradeHeader = request.headers.get("Upgrade");
 		if (upgradeHeader !== "websocket") {
@@ -28,6 +43,17 @@ export class ChatRoom extends DurableObject {
 		const [client, server] = Object.values(pair);
 
 		this.ctx.acceptWebSocket(server);
+		const cursor = this.ctx.storage.sql.exec(
+			"SELECT content FROM messages ORDER BY id ASC LIMIT 30"
+		);
+		const history = [...cursor].map((row: any) => row.content);
+
+		server.send(
+			JSON.stringify(
+				{ type: "history", messages: history }
+			)
+		);
+
 
 		return new Response(null, {
 			status: 101,
@@ -36,13 +62,35 @@ export class ChatRoom extends DurableObject {
 	}
 
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+	   this.ctx.storage.sql.exec(
+		   "INSERT INTO messages (content, author, timestamp) VALUES (?, ?, ?)",
+		   message,
+		   "unknown",
+		   new Date().toISOString()
+	   );
+
+	   const msg = JSON.stringify(
+		   {
+			   type: "message",
+			   content: message,
+			   author: "unknown",
+		   }
+	   );
+	   const msgAck = JSON.stringify(
+		   {
+			   type: "ack",
+			   content: message,
+		   }
+	   );
+
+
 	   const sockets = this.ctx.getWebSockets();
 	   for (const socket of sockets) {
 		   if (socket == ws) {
-			   socket.send("Accepted: " + message);
+			   socket.send(msgAck);
 			   continue;
 		   }
-		   socket.send(message);
+		   socket.send(msg);
 	   }
 	}
 

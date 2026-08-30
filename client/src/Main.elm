@@ -96,33 +96,43 @@ subscriptions model =
 
 typeDecoder : Decoder String
 typeDecoder =
-    Decode.field "type" Decode.string
+        Decode.field "type" Decode.string
 
 messageContentDecoder : Decoder String
 messageContentDecoder =
-    typeDecoder
-        |> Decode.andThen payloadDecoder
+        Decode.field "content" Decode.string
 
-payloadDecoder : String -> Decoder String
-payloadDecoder messageType =
-    case messageType of
-        "message" ->
-            Decode.field "content" Decode.string
-        "ack" ->
-            Decode.field "content" Decode.string
-        "history" ->
-            Decode.field "messages" (Decode.list Decode.string)
-            |> Decode.map (String.join ", ")
-        _ ->
-            Decode.succeed "not implemented"
+historyDecoder : Decoder String
+historyDecoder =
+        Decode.field "messages" (Decode.list Decode.string)
+        |> Decode.map (String.join "\n")
+
+ackDecoder : Decoder String
+ackDecoder =
+        Decode.field "content" Decode.string
+
+routeByMessageType : String -> String -> Msg
+routeByMessageType msgType rawJson =
+        case msgType of
+                "message" -> case Decode.decodeString messageContentDecoder rawJson of
+                        Ok content -> MessageReceived content
+                        Err _ -> MessageReceived "error"
+                "history" -> case Decode.decodeString historyDecoder rawJson of
+                        Ok content -> MessageReceived content
+                        Err _ -> MessageReceived "error"
+                "ack" -> case Decode.decodeString ackDecoder rawJson of
+                        Ok content -> MessageReceived content
+                        Err _ -> MessageReceived "error"
+                _ -> MessageReceived "error"
+
 
 handleIncomingMsg : String -> Msg
 handleIncomingMsg rawJson =
-    case Decode.decodeString messageContentDecoder rawJson of
-        Ok stringValue ->
-            MessageReceived stringValue
+    case Decode.decodeString typeDecoder rawJson of
+        Ok msgType ->
+                routeByMessageType msgType rawJson
         Err _ ->
-            MessageReceived rawJson
+                MessageReceived rawJson
 
 main = Browser.element {
         init = init,

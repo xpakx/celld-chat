@@ -9,7 +9,8 @@ export default {
 		const url = new URL(request.url);
 
 		if (url.pathname === "/ws") {
-			const id = env.CHAT_ROOM.idFromName("global-chat");
+			const roomName = url.searchParams.get("room") || "global-chat";
+			const id = env.CHAT_ROOM.idFromName(roomName);
 			const stub = env.CHAT_ROOM.get(id);
 			return stub.fetch(request);
 		}
@@ -44,7 +45,7 @@ export class ChatRoom extends DurableObject {
 
 		this.ctx.acceptWebSocket(server);
 		const cursor = this.ctx.storage.sql.exec(
-			"SELECT content FROM messages ORDER BY id ASC LIMIT 30"
+			"SELECT content FROM messages ORDER BY id ASC LIMIT 30",
 		);
 		const history = [...cursor].map((row: any) => row.content);
 

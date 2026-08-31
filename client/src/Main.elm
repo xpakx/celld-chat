@@ -23,6 +23,7 @@ type Msg
     | OnInput String
     | MessageReceived String
     | StatusChanged String
+    | HistoryUpdate (List String)
 
 view : Model -> Html Msg
 view model =
@@ -64,6 +65,11 @@ update msg model =
                         { model | msgs = model.msgs ++ [ newMsg ] }, 
                         Cmd.none
                         )
+                HistoryUpdate msgs ->
+                        ( 
+                        { model | msgs = model.msgs ++ msgs }, 
+                        Cmd.none
+                        )
                 StatusChanged status ->
                         (
                                 { model | status = status,
@@ -102,10 +108,9 @@ messageContentDecoder : Decoder String
 messageContentDecoder =
         Decode.field "content" Decode.string
 
-historyDecoder : Decoder String
+historyDecoder : Decoder (List String)
 historyDecoder =
         Decode.field "messages" (Decode.list Decode.string)
-        |> Decode.map (String.join "\n")
 
 ackDecoder : Decoder String
 ackDecoder =
@@ -118,7 +123,7 @@ routeByMessageType msgType rawJson =
                         Ok content -> MessageReceived content
                         Err _ -> MessageReceived "error"
                 "history" -> case Decode.decodeString historyDecoder rawJson of
-                        Ok content -> MessageReceived content
+                        Ok content -> HistoryUpdate content
                         Err _ -> MessageReceived "error"
                 "ack" -> case Decode.decodeString ackDecoder rawJson of
                         Ok content -> MessageReceived content

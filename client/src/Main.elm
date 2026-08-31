@@ -18,12 +18,17 @@ type alias Model = {
         statusClass: String
         }
 
+type alias ChatMessage = {
+        author : String,
+        content : String
+        }
+
 type Msg
     = OnClick
     | OnInput String
     | MessageReceived String
     | StatusChanged String
-    | HistoryUpdate (List String)
+    | HistoryUpdate (List ChatMessage)
 
 view : Model -> Html Msg
 view model =
@@ -66,8 +71,12 @@ update msg model =
                         Cmd.none
                         )
                 HistoryUpdate msgs ->
+                        let
+                            contents =
+                                    List.map .content msgs
+                        in
                         ( 
-                        { model | msgs = model.msgs ++ msgs }, 
+                        { model | msgs = model.msgs ++ contents }, 
                         Cmd.none
                         )
                 StatusChanged status ->
@@ -108,9 +117,15 @@ messageContentDecoder : Decoder String
 messageContentDecoder =
         Decode.field "content" Decode.string
 
-historyDecoder : Decoder (List String)
+messageHelperDecoder : Decoder ChatMessage
+messageHelperDecoder =
+        Decode.map2 ChatMessage
+                (Decode.field "author" Decode.string)
+                (Decode.field "content" Decode.string)
+
+historyDecoder : Decoder (List ChatMessage)
 historyDecoder =
-        Decode.field "messages" (Decode.list Decode.string)
+        Decode.field "messages" (Decode.list messageHelperDecoder)
 
 ackDecoder : Decoder String
 ackDecoder =

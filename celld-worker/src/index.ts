@@ -45,9 +45,9 @@ export class ChatRoom extends DurableObject {
 
 		this.ctx.acceptWebSocket(server);
 		const cursor = this.ctx.storage.sql.exec(
-			"SELECT content FROM messages ORDER BY id ASC LIMIT 30",
+			"SELECT content, author FROM messages ORDER BY id ASC LIMIT 30",
 		);
-		const history = [...cursor].map((row: any) => row.content);
+		const history = [...cursor].map((row: any) => {return {author: row.author, content: row.content}});
 
 		server.send(
 			JSON.stringify(
@@ -63,10 +63,11 @@ export class ChatRoom extends DurableObject {
 	}
 
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+	   const author = "unknown"
 	   this.ctx.storage.sql.exec(
 		   "INSERT INTO messages (content, author, timestamp) VALUES (?, ?, ?)",
 		   message,
-		   "unknown",
+		   author,
 		   new Date().toISOString()
 	   );
 
@@ -74,7 +75,7 @@ export class ChatRoom extends DurableObject {
 		   {
 			   type: "message",
 			   content: message,
-			   author: "unknown",
+			   author: author,
 		   }
 	   );
 	   const msgAck = JSON.stringify(

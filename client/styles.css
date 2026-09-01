@@ -45,3 +45,24 @@ button {
 	margin-bottom: 10px;
 	background: #f9f9f9;
 }
+
+.message {
+	margin: 0 0 19px;
+}
+
+.msg-author {
+	font-weight: bold;
+}
+
+.msg-content {
+	display: inline-block;
+	background: #a9aeba;
+	border: 1px solid rgba(255, 255, 255, .055);
+	padding: 10px 13px;
+	border-radius: 0 15px 15px 15px;
+	font-size: 13px;
+	line-height: 1.5;
+	max-width: min(620px, 100%);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}

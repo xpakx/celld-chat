@@ -13,7 +13,7 @@ port changeStatus : (String -> msg) -> Sub msg
 
 type alias Model = {
         inputMsg : String,
-        msgs : List String,
+        msgs : List ChatMessage,
         status: String,
         statusClass: String
         }
@@ -26,7 +26,7 @@ type alias ChatMessage = {
 type Msg
     = OnClick
     | OnInput String
-    | MessageReceived String
+    | MessageReceived ChatMessage
     | StatusChanged String
     | HistoryUpdate (List ChatMessage)
 
@@ -38,7 +38,10 @@ view model =
             [ 
                     div [class model.statusClass] [text model.status],
                     div [id "log"] 
-                    (List.map (\msg -> Html.div [] [ text msg ]) model.msgs)
+                    (List.map (\msg -> Html.div [class "message"] [
+                                    div [class "msg-author"] [text msg.author],
+                                    div [class "msg-content"] [text msg.content]
+                            ]) model.msgs)
                     ,
                     div [class "controls"] [
                             input [ placeholder "Type a message...",
@@ -59,9 +62,8 @@ update msg model =
                                 (model, Cmd.none)
                         else
                                 (
-                                        { model 
-                                | msgs = model.msgs ++ [ model.inputMsg ],
-                                inputMsg = ""
+                                { model 
+                                | inputMsg = ""
                                 },
                                 sendMessage model.inputMsg
                                 )
@@ -71,12 +73,8 @@ update msg model =
                         Cmd.none
                         )
                 HistoryUpdate msgs ->
-                        let
-                            contents =
-                                    List.map .content msgs
-                        in
                         ( 
-                        { model | msgs = model.msgs ++ contents }, 
+                        { model | msgs = model.msgs ++ msgs }, 
                         Cmd.none
                         )
                 StatusChanged status ->
@@ -134,17 +132,21 @@ ackDecoder =
 routeByMessageType : String -> String -> Msg
 routeByMessageType msgType rawJson =
         case msgType of
-                "message" -> case Decode.decodeString messageContentDecoder rawJson of
+                "message" -> case Decode.decodeString messageHelperDecoder rawJson of
                         Ok content -> MessageReceived content
-                        Err _ -> MessageReceived "error"
+                        Err _ -> MessageReceived 
+                                { author = "system", content = "error" }
                 "history" -> case Decode.decodeString historyDecoder rawJson of
                         Ok content -> HistoryUpdate content
-                        Err _ -> MessageReceived "error"
+                        Err _ -> MessageReceived 
+                                { author = "system", content = "error" }
                 "ack" -> case Decode.decodeString ackDecoder rawJson of
-                        Ok content -> MessageReceived content
-                        Err _ -> MessageReceived "error"
-                _ -> MessageReceived "error"
-
+                        Ok content -> MessageReceived 
+                                { author = "system", content = content }
+                        Err _ -> MessageReceived 
+                                { author = "system", content = "error" }
+                _ -> MessageReceived 
+                        { author = "system", content = "error" }
 
 handleIncomingMsg : String -> Msg
 handleIncomingMsg rawJson =
@@ -152,7 +154,8 @@ handleIncomingMsg rawJson =
         Ok msgType ->
                 routeByMessageType msgType rawJson
         Err _ ->
-                MessageReceived rawJson
+                MessageReceived 
+                        { author = "system", content = rawJson }
 
 main = Browser.element {
         init = init,

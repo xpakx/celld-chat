@@ -34,7 +34,23 @@ input {
 }
 
 button {
+	font-family: "Dosis", sans-serif;
+	letter-spacing: 0.2rem;
 	padding: 8px 16px;
+	border: 1px solid rgba(10, 10, 10, .55);
+	border-radius: 5px;
+	background: linear-gradient(135deg, #f2cdcd, #d6686c);
+	cursor: pointer;
+	place-items: center;
+}
+
+button:hover {
+	background: linear-gradient(75deg, #f2cdcd, #d6686c);
+}
+
+button:active {
+	transform: translateY(1px) scale(0.95) rotate(0deg);
+	transition: transform 0.1s ease;
 }
 
 #log {

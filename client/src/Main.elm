@@ -33,6 +33,7 @@ type Msg
     = OnClick
     | OnInput String
     | MessageReceived ChatMessage
+    | AckReceived String
     | StatusChanged String
     | HistoryUpdate History
 
@@ -76,6 +77,11 @@ update msg model =
                 MessageReceived newMsg ->
                         ( 
                         { model | msgs = model.msgs ++ [ newMsg ] }, 
+                        Cmd.none
+                        )
+                AckReceived newMsg ->
+                        ( 
+                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg } ] }, 
                         Cmd.none
                         )
                 HistoryUpdate history ->
@@ -151,8 +157,7 @@ routeByMessageType msgType rawJson =
                         Err _ -> MessageReceived 
                                 { author = "system", content = "error" }
                 "ack" -> case Decode.decodeString ackDecoder rawJson of
-                        Ok content -> MessageReceived 
-                                { author = "system", content = content }
+                        Ok content -> AckReceived content
                         Err _ -> MessageReceived 
                                 { author = "system", content = "error" }
                 _ -> MessageReceived 

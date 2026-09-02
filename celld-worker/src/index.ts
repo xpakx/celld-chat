@@ -40,12 +40,17 @@ export class ChatRoom extends DurableObject {
 			return new Response("Expected Upgrade: websocket", { status: 426 });
 		}
 
+		const header = request.headers.get("Sec-WebSocket-Protocol");
+
+
 		const pair = new WebSocketPair();
 		const [client, server] = Object.values(pair);
 
 		this.ctx.acceptWebSocket(server);
 
-		const authorName = generateAnonymousName();
+
+		const authorName = extractNameFromSubprotocols(header) ?? generateAnonymousName();
+
 		server.serializeAttachment({ name: authorName });
 
 		const cursor = this.ctx.storage.sql.exec(
@@ -116,4 +121,11 @@ function generateAnonymousName(): string {
 	const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
 	const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
 	return `${adj} ${animal}`;
+}
+
+function extractNameFromSubprotocols(header: string | null): string | undefined {
+	if (!header) return undefined;
+	const protocols = header.split(",").map((p) => p.trim());
+	const bearerProtocol = protocols.find((p) => p.startsWith("bearer."));
+	return bearerProtocol ? bearerProtocol.replace("bearer.", "") : undefined;
 }

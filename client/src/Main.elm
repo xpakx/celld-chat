@@ -37,6 +37,18 @@ type Msg
     | StatusChanged String
     | HistoryUpdate History
 
+onEnter : Msg -> Attribute Msg
+onEnter msg =
+    let
+        isEnter key =
+            if key == "Enter" then
+                Decode.succeed msg
+            else
+                Decode.fail "not enter"
+    in
+    on "keydown" (Decode.field "key" Decode.string 
+    |> Decode.andThen isEnter)
+
 view : Model -> Html Msg
 view model =
     div [ class "chat" ]
@@ -51,7 +63,8 @@ view model =
                             ]) model.msgs)
                     ,
                     div [class "controls"] [
-                            input [ placeholder "Type a message...",
+                            input [ onEnter OnClick, 
+                            placeholder "Type a message...",
                             value model.inputMsg,
                             onInput OnInput ] [],
                             button [ onClick OnClick] [ text "Send" ]

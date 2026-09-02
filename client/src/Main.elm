@@ -15,7 +15,8 @@ type alias Model = {
         inputMsg : String,
         msgs : List ChatMessage,
         status: String,
-        statusClass: String
+        statusClass: String,
+        username : String
         }
 
 type alias ChatMessage = {
@@ -23,12 +24,17 @@ type alias ChatMessage = {
         content : String
         }
 
+type alias History = {
+        messages : List ChatMessage,
+        name : String
+        }
+
 type Msg
     = OnClick
     | OnInput String
     | MessageReceived ChatMessage
     | StatusChanged String
-    | HistoryUpdate (List ChatMessage)
+    | HistoryUpdate History
 
 view : Model -> Html Msg
 view model =
@@ -36,7 +42,7 @@ view model =
         [ h1 [] [ text "Chat" ]
         , p []
             [ 
-                    div [class model.statusClass] [text model.status],
+                    div [class model.statusClass] [text (model.status ++ "  (" ++ model.username ++ ")")],
                     div [id "log"] 
                     (List.map (\msg -> Html.div [class "message"] [
                                     div [class "msg-author"] [text msg.author],
@@ -72,9 +78,10 @@ update msg model =
                         { model | msgs = model.msgs ++ [ newMsg ] }, 
                         Cmd.none
                         )
-                HistoryUpdate msgs ->
+                HistoryUpdate history ->
                         ( 
-                        { model | msgs = model.msgs ++ msgs }, 
+                        { model | msgs = model.msgs ++ history.messages,
+                        username = history.name}, 
                         Cmd.none
                         )
                 StatusChanged status ->
@@ -94,7 +101,8 @@ initialModel = {
         inputMsg = "",
         msgs = [],
         status = "Disconnected",
-        statusClass = "status disconnected"
+        statusClass = "status disconnected",
+        username = "unknown"
         }
 
 init: () -> (Model, Cmd Msg)
@@ -121,9 +129,11 @@ messageHelperDecoder =
                 (Decode.field "author" Decode.string)
                 (Decode.field "content" Decode.string)
 
-historyDecoder : Decoder (List ChatMessage)
+historyDecoder : Decoder History
 historyDecoder =
-        Decode.field "messages" (Decode.list messageHelperDecoder)
+        Decode.map2 History
+                (Decode.field "messages" (Decode.list messageHelperDecoder))
+                (Decode.field "name" Decode.string)
 
 ackDecoder : Decoder String
 ackDecoder =

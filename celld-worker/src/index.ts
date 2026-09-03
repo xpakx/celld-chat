@@ -54,7 +54,7 @@ export class ChatRoom extends DurableObject {
 		server.serializeAttachment({ name: authorName });
 
 		const cursor = this.ctx.storage.sql.exec(
-			"SELECT content, author FROM messages ORDER BY id ASC LIMIT 30",
+			"SELECT content, author FROM (SELECT id, content, author FROM messages ORDER BY id DESC LIMIT 30) ORDER BY id ASC"
 		);
 		const history = [...cursor].map((row: any) => {return {author: row.author, content: row.content}});
 

@@ -40,14 +40,18 @@ type Msg
 onEnter : Msg -> Attribute Msg
 onEnter msg =
     let
-        isEnter key =
-            if key == "Enter" then
+        keyDecoder =
+                Decode.map2 Tuple.pair
+                (Decode.field "key" Decode.string)
+                (Decode.field "shiftKey" Decode.bool)
+        checkEnter (key, shift) =
+            if key == "Enter" && not shift then
                 Decode.succeed msg
             else
                 Decode.fail "not enter"
     in
-    on "keydown" (Decode.field "key" Decode.string 
-    |> Decode.andThen isEnter)
+    on "keydown" (keyDecoder 
+    |> Decode.andThen checkEnter)
 
 view : Model -> Html Msg
 view model =

@@ -77,41 +77,61 @@ export class ChatRoom extends DurableObject {
 		const attachment = ws.deserializeAttachment() as { name: string } | null;
 		const author = attachment?.name || "unknown";
 
-	   this.ctx.storage.sql.exec(
-		   "INSERT INTO messages (content, author, timestamp) VALUES (?, ?, ?)",
-		   message,
-		   author,
-		   new Date().toISOString()
-	   );
+		const data = JSON.parse(message as string);
 
-	   const msg = JSON.stringify(
-		   {
-			   type: "message",
-			   content: message,
-			   author: author,
-		   }
-	   );
-	   const msgAck = JSON.stringify(
-		   {
-			   type: "ack",
-			   content: message,
-		   }
-	   );
-
-
-	   const sockets = this.ctx.getWebSockets();
-	   for (const socket of sockets) {
-		   if (socket == ws) {
-			   socket.send(msgAck);
-			   continue;
-		   }
-		   socket.send(msg);
-	   }
+		if (data.type == "register") {
+			// TODO: remember key and fingerprint
+		} else if (data.type == "message") {
+			await this.processMsg(ws, author, data);
+		}
 	}
 
 	async webSocketClose(ws: WebSocket, code: number, reason: string, _wasClean: boolean): Promise<void> {
 		ws.close(code, reason);
 	}
+
+	async processMsg(ws: WebSocket, author: string, message: MessageReq) {
+		// TODO: verify signature
+		this.ctx.storage.sql.exec(
+			"INSERT INTO messages (content, author, timestamp) VALUES (?, ?, ?)",
+			message.msg,
+			author,
+			new Date().toISOString()
+		);
+
+		const msg = JSON.stringify(
+			{
+				type: "message",
+				content: message.msg,
+				author: author,
+			}
+		);
+		const msgAck = JSON.stringify(
+			{
+				type: "ack",
+				content: message.msg,
+			}
+		);
+
+
+		const sockets = this.ctx.getWebSockets();
+		for (const socket of sockets) {
+			if (socket == ws) {
+				socket.send(msgAck);
+				continue;
+			}
+			socket.send(msg);
+		}
+
+	}
+}
+
+interface MessageReq {
+	type: "message",
+	signature: string,
+	publicKey: CryptoKey,
+	msg: string,
+	timestamp: string,
 }
 
 const ADJECTIVES = ["anonymous", "curious", "secret", "mysterious", "hidden", "clever"];

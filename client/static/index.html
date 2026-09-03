@@ -47,7 +47,7 @@
 
     app.ports.sendMessage.subscribe(function(message) {
 	    if (ws.readyState == WebSocket.OPEN) {
-	        ws.send(message);
+		broadcastMsg(ws, message, identity);
 	    }
     });
 })();
@@ -95,6 +95,27 @@
 	    const payload = JSON.stringify(regReq);
 	    ws.send(payload);
 	    // TODO: read them on the backend
+    }
+
+    async function broadcastMsg(ws, msg, identity) {
+	    const timestamp = Date.now();
+	    const payload = JSON.stringify({ msg, timestamp });
+	    const signatureBuffer = await window.crypto.subtle.sign(
+		    { name: "ECDSA", hash: { name: "SHA-256" } },
+		    identity.keyPair.privateKey,
+		    new TextEncoder().encode(payload)
+	    );
+	    const sig = btoa(String.fromCharCode(
+		    ...new Uint8Array(signatureBuffer))
+	    );
+	    let msgReq = {
+		    type: 'message',
+		    msg: msg,
+		    timestamp: timestamp,
+		    signature: sig,
+	    };
+	    const finPayload = JSON.stringify(msgReq);
+	    ws.send(finPayload);
     }
   </script>
 </body>

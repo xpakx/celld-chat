@@ -15,11 +15,12 @@
   <div id="app"></div>
   <script src="elm.js"></script>
   <script>
+(async () => {
     var app = Elm.Main.init({
       node: document.getElementById('app')
     });
 
-    const identity = getIdentity();
+    const identity = await getIdentity();
     const WS_URL = "ws://localhost:8080/ws"; 
     app.ports.getMessage.send("Connecting to " + WS_URL + "...");
     const ws = new WebSocket(WS_URL);
@@ -27,7 +28,7 @@
     ws.onopen = () => {
         app.ports.getMessage.send("Connected successfully!");
         app.ports.changeStatus.send("Connected");
-
+	register(ws, identity);
     };
 
     ws.onmessage = (event) => {
@@ -49,6 +50,7 @@
 	        ws.send(message);
 	    }
     });
+})();
 
     async function getIdentity() {
 	    let keyPair = undefined; // TODO: load from indexeddb
@@ -78,6 +80,22 @@
 	    return { keyPair, pubJwk, fingerprint };
     }
 
+    function register(ws, identity) {
+	    // TODO: load username form indexeddb
+	    const username = undefined;
+	    let regReq = {
+		    type: 'register',
+		    pubJwk: identity.pubJwk,
+		    fingerprint: identity.fingerprint,
+	    };
+	    if (username) {
+		    regReq['username'] = username;
+	    }
+
+	    const payload = JSON.stringify(regReq);
+	    ws.send(payload);
+	    // TODO: read them on the backend
+    }
   </script>
 </body>
 </html>

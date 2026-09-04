@@ -28,7 +28,9 @@ export class ChatRoom extends DurableObject {
 					id INTEGER PRIMARY KEY AUTOINCREMENT,
 					content TEXT,
 					author TEXT,
-					timestamp TEXT
+					timestamp TEXT,
+					verified BOOLEAN,
+					fingerprint TEXT
 				)
 			`);
 		});
@@ -81,7 +83,6 @@ export class ChatRoom extends DurableObject {
 		if (data.type == "register") {
 			await this.register(ws, author, data);
 		} else if (data.type == "message") {
-
 			await this.processMsg(ws, attachment ?? {name: author}, data);
 		}
 	}
@@ -92,13 +93,16 @@ export class ChatRoom extends DurableObject {
 
 	async processMsg(ws: WebSocket, data: Attachments, message: MessageReq) {
 		// TODO: save verification data and fingerprint to the db
+		const verified = await this.verifyMessage(message, data);
+		const fingerprint = verified ? data.fingerprint : undefined;
 		this.ctx.storage.sql.exec(
-			"INSERT INTO messages (content, author, timestamp) VALUES (?, ?, ?)",
+			"INSERT INTO messages (content, author, timestamp, verified, fingerprint) VALUES (?, ?, ?, ?, ?)",
 			message.msg,
 			data.name,
-			new Date().toISOString()
+			new Date().toISOString(),
+			verified,
+			fingerprint
 		);
-		const verified = await this.verifyMessage(message, data);
 
 		const msg = JSON.stringify(
 			{
@@ -106,7 +110,7 @@ export class ChatRoom extends DurableObject {
 				content: message.msg,
 				author: data.name,
 				verified: verified,
-				fingerprint: verified ? data.fingerprint : undefined
+				fingerprint: fingerprint
 			}
 		);
 		const msgAck = JSON.stringify(

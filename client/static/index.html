@@ -85,8 +85,19 @@
 		    .put(key, "chat-key");
     }
 
+    async function readKey() {
+	    const database = await openIndexedDB();
+	    const tx = database.transaction(["keys"], "readonly");
+	    const request = tx.objectStore("keys").get("chat-key");
+
+	    return new Promise((resolve, reject) => {
+		    request.onsuccess = () => resolve(request.result);
+		    request.onerror = (event) => reject(event.target.error);
+	    });
+    }
+
     async function getIdentity() {
-	    let keyPair = undefined; // TODO: load from indexeddb
+	    let keyPair = await readKey();
 	    if (!keyPair) {
 		    keyPair = await window.crypto.subtle.generateKey(
 			    { name: "ECDSA", namedCurve: "P-256" },

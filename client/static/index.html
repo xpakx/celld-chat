@@ -20,6 +20,7 @@
       node: document.getElementById('app')
     });
 
+    let db = null;
     const identity = await getIdentity();
     const WS_URL = "ws://localhost:8080/ws"; 
     app.ports.getMessage.send("Connecting to " + WS_URL + "...");
@@ -32,6 +33,7 @@
     };
 
     ws.onmessage = (event) => {
+	console.log(event.data);
         app.ports.getMessage.send(event.data);
     };
 
@@ -50,7 +52,38 @@
 		broadcastMsg(ws, message, identity);
 	    }
     });
-})();
+
+
+
+    function openIndexedDB() {
+	if (db) return Promise.resolve(db);
+
+	return new Promise((resolve, reject) => {
+		const request = indexedDB.open("CelldChatDB", 1);
+
+		request.onsuccess = (event) => {
+			db = event.target.result;
+			db.onclose = () => { db = null; };
+			resolve(db);
+		};
+		request.onupgradeneeded = (event) => {
+			const db = event.target.result;
+			if (!db.objectStoreNames.contains("keys")) {
+				db.createObjectStore("keys");
+			}
+		};
+		// onversionchange?
+
+		request.onerror = (event) => reject(event.target.error);
+	});
+    }
+
+    async function saveKey(key) {
+	    const database = await openIndexedDB();
+	    const tx = database.transaction(["keys"], "readwrite");
+	    tx.objectStore("keys")
+		    .put(key, "chat-key");
+    }
 
     async function getIdentity() {
 	    let keyPair = undefined; // TODO: load from indexeddb
@@ -60,7 +93,7 @@
 			    false,
 			    ["sign", "verify"]
 		    );
-		    // TODO: save to indexeddb
+		    await saveKey(keyPair);
 	    }
 
 	    const pubJwk = await window.crypto.subtle.exportKey(
@@ -117,6 +150,7 @@
 	    const finPayload = JSON.stringify(msgReq);
 	    ws.send(finPayload);
     }
+})();
   </script>
 </body>
 </html>

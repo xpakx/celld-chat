@@ -74,15 +74,15 @@ export class ChatRoom extends DurableObject {
 	}
 
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-		const attachment = ws.deserializeAttachment() as { name: string } | null;
+		const attachment = ws.deserializeAttachment() as Attachments | null;
 		const author = attachment?.name || "unknown";
-
 		const data = JSON.parse(message as string);
 
 		if (data.type == "register") {
 			await this.register(ws, author, data);
 		} else if (data.type == "message") {
-			await this.processMsg(ws, author, data);
+
+			await this.processMsg(ws, attachment ?? {name: author}, data);
 		}
 	}
 
@@ -90,26 +90,30 @@ export class ChatRoom extends DurableObject {
 		ws.close(code, reason);
 	}
 
-	async processMsg(ws: WebSocket, author: string, message: MessageReq) {
-		// TODO: verify signature
+	async processMsg(ws: WebSocket, data: Attachments, message: MessageReq) {
+		// TODO: save verification data and fingerprint to the db
 		this.ctx.storage.sql.exec(
 			"INSERT INTO messages (content, author, timestamp) VALUES (?, ?, ?)",
 			message.msg,
-			author,
+			data.name,
 			new Date().toISOString()
 		);
+		const verified = await this.verifyMessage(message, data);
 
 		const msg = JSON.stringify(
 			{
 				type: "message",
 				content: message.msg,
-				author: author,
+				author: data.name,
+				verified: verified,
+				fingerprint: verified ? data.fingerprint : undefined
 			}
 		);
 		const msgAck = JSON.stringify(
 			{
 				type: "ack",
 				content: message.msg,
+				verified: verified,
 			}
 		);
 
@@ -155,6 +159,37 @@ export class ChatRoom extends DurableObject {
 			fingerprint: computedFingerprint
 		}));
 	}
+
+	async verifyMessage(msg: MessageReq, data: Attachments): Promise<boolean> {
+		if (!data.pubJwk || !data.fingerprint) return false;
+		// TODO: we prolly shouldn't parse that on every msg
+		const pubJwk = JSON.parse(data.pubJwk);
+		const cryptoKey = await crypto.subtle.importKey(
+			"jwk",
+			pubJwk,
+			{ name: "ECDSA", namedCurve: "P-256" },
+			false,
+			["verify"]
+		);
+
+		const encoder = new TextEncoder();
+		const dataToVerify = encoder.encode(JSON.stringify({
+			msg: msg.msg,
+			timestamp: msg.timestamp,
+		}));
+		const signatureBytes = Uint8Array.from(
+			atob(msg.signature),
+			c => c.charCodeAt(0)
+		);
+
+		const isValid = await crypto.subtle.verify(
+			{ name: "ECDSA", hash: "SHA-256" },
+			cryptoKey,
+			signatureBytes,
+			dataToVerify
+		);
+		return isValid;
+	}
 }
 
 interface MessageReq {
@@ -167,8 +202,14 @@ interface MessageReq {
 interface RegisterReq {
 	type: "register",
 	fingerprint: string,
-	pubJwk: CryptoKey,
+	pubJwk: JsonWebKey,
 	username: string | undefined,
+}
+
+interface Attachments {
+	name: string,
+	pubJwk?: string,
+	fingerprint?: string,
 }
 
 const ADJECTIVES = ["anonymous", "curious", "secret", "mysterious", "hidden", "clever"];

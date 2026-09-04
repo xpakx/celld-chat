@@ -80,7 +80,7 @@ export class ChatRoom extends DurableObject {
 		const data = JSON.parse(message as string);
 
 		if (data.type == "register") {
-			// TODO: remember key and fingerprint
+			await this.register(ws, author, data);
 		} else if (data.type == "message") {
 			await this.processMsg(ws, author, data);
 		}
@@ -124,14 +124,51 @@ export class ChatRoom extends DurableObject {
 		}
 
 	}
+
+	async register(ws: WebSocket, author: string, message: RegisterReq) {
+		const pubString = JSON.stringify(message.pubJwk);
+
+		const hashBuffer = await crypto.subtle.digest(
+			"SHA-256",
+			new TextEncoder().encode(pubString)
+		);
+		const computedFingerprint = Array.from(new Uint8Array(hashBuffer))
+			.map(b => b.toString(16).padStart(2, '0'))
+			.join('')
+			.slice(0, 8);
+		if (computedFingerprint !== message.fingerprint) {
+			ws.send(JSON.stringify({ type: "error", message: "Fingerprint mismatch" }));
+			return;
+		}
+
+		const effectiveAuthor = message.username || author;
+
+		ws.serializeAttachment({
+			name: effectiveAuthor,
+			fingerprint: computedFingerprint,
+			pubJwk: pubString
+		});
+
+		ws.send(JSON.stringify({
+			type: "register_ack",
+			author: effectiveAuthor,
+			fingerprint: computedFingerprint
+		}));
+	}
 }
 
 interface MessageReq {
 	type: "message",
 	signature: string,
-	publicKey: CryptoKey,
 	msg: string,
 	timestamp: string,
+}
+
+interface RegisterReq {
+	type: "register",
+	fingerprint: string,
+	pubJwk: CryptoKey,
+	username: string | undefined,
 }
 
 const ADJECTIVES = ["anonymous", "curious", "secret", "mysterious", "hidden", "clever"];

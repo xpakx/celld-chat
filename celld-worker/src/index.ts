@@ -56,9 +56,14 @@ export class ChatRoom extends DurableObject {
 		server.serializeAttachment({ name: authorName });
 
 		const cursor = this.ctx.storage.sql.exec(
-			"SELECT content, author FROM (SELECT id, content, author FROM messages ORDER BY id DESC LIMIT 30) ORDER BY id ASC"
+			"SELECT content, author, verified, fingerprint FROM (SELECT id, content, author, verified, fingerprint FROM messages ORDER BY id DESC LIMIT 30) ORDER BY id ASC"
 		);
-		const history = [...cursor].map((row: any) => {return {author: row.author, content: row.content}});
+		const history = [...cursor].map((row: any) => { return {
+				author: row.author,
+				content: row.content,
+				verified: row.verified,
+				fingerprint: row.fingerprint
+		}});
 
 		server.send(
 			JSON.stringify({
@@ -92,7 +97,6 @@ export class ChatRoom extends DurableObject {
 	}
 
 	async processMsg(ws: WebSocket, data: Attachments, message: MessageReq) {
-		// TODO: save verification data and fingerprint to the db
 		const verified = await this.verifyMessage(message, data);
 		const fingerprint = verified ? data.fingerprint : undefined;
 		this.ctx.storage.sql.exec(

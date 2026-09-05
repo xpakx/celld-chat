@@ -76,12 +76,13 @@ main {
 	align-items: end;
 }
 
-input {
+textarea {
 	min-height: 68px;
 	max-height: 170px;
 	border: 1px solid #ccc;
 	background: transparent;
 	padding: 14px;
+	resize: none;
 }
 
 button {

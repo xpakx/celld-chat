@@ -97,7 +97,7 @@ viewMessages msgs =
 viewControls : String -> Html Msg
 viewControls inputMsg =
         div [class "controls"] [
-                input [ onEnter OnClick, 
+                textarea [ onEnter OnClick, 
                 placeholder "Type a message...",
                 value inputMsg,
                 onInput OnInput ] [],

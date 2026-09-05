@@ -56,30 +56,53 @@ onEnter msg =
 view : Model -> Html Msg
 view model =
     div [ class "app-mount" ] [
-    aside [ class "rail" ] [],
-    aside [ class "sidebar" ] [],
-    main_ [ class "chat" ]
-        [ 
-                header [ class "chat-header" ] [
-                        h1 [] [ text "Chat" ],
-                        div [class model.statusClass] [text (model.status ++ "  (" ++ model.username ++ ")")]
-                ], 
-                section [ class "messages" ] [ 
-                    div [id "log"] 
-                    (List.map (\msg -> Html.div [class "message"] [
-                                    div [class "msg-author"] [text msg.author],
-                                    div [class "msg-content"] [text msg.content]
-                            ]) model.msgs)
-                ],
-                div [class "controls"] [
-                        input [ onEnter OnClick, 
-                        placeholder "Type a message...",
-                        value model.inputMsg,
-                        onInput OnInput ] [],
-                        button [ onClick OnClick] [ text "Send" ]
-                ]
-        ]
+            viewRail,
+            viewSidebar,
+            viewChat model
     ]
+
+viewRail : Html Msg
+viewRail =
+    aside [ class "rail" ] []
+
+viewSidebar : Html Msg
+viewSidebar =
+    aside [ class "sidebar" ] []
+
+viewChat : Model -> Html Msg
+viewChat model =
+    main_ [ class "chat" ] [ 
+            viewHeader model.statusClass model.status model.username,
+            viewMessages model.msgs,
+            viewControls model.inputMsg
+        ]
+
+viewHeader : String -> String -> String -> Html Msg
+viewHeader statusClass status username =
+        header [ class "chat-header" ] [
+                h1 [] [ text "Chat" ],
+                div [class statusClass] [text (status ++ "  (" ++ username ++ ")")]
+        ] 
+
+viewMessages : List ChatMessage -> Html Msg
+viewMessages msgs =
+        section [ class "messages" ] [ 
+                div [id "log"] 
+                (List.map (\msg -> Html.div [class "message"] [
+                        div [class "msg-author"] [text msg.author],
+                        div [class "msg-content"] [text msg.content]
+                        ]) msgs)
+        ]
+
+viewControls : String -> Html Msg
+viewControls inputMsg =
+        div [class "controls"] [
+                input [ onEnter OnClick, 
+                placeholder "Type a message...",
+                value inputMsg,
+                onInput OnInput ] [],
+                button [ onClick OnClick] [ text "Send" ]
+        ]
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =

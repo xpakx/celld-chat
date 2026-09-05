@@ -46,11 +46,11 @@ onEnter msg =
                 (Decode.field "shiftKey" Decode.bool)
         checkEnter (key, shift) =
             if key == "Enter" && not shift then
-                Decode.succeed msg
+                Decode.succeed ( msg, True )
             else
                 Decode.fail "not enter"
     in
-    on "keydown" (keyDecoder 
+    preventDefaultOn "keydown" (keyDecoder 
     |> Decode.andThen checkEnter)
 
 view : Model -> Html Msg

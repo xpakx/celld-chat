@@ -1,8 +1,30 @@
 body {
 	font-family: sans-serif;
-	max-width: 600px;
-	margin: 40px auto;
-	padding: 0 20px;
+	overflow: hidden;
+	color: #08090b;
+}
+
+.app-mount {
+	width: 100dvw;
+	height: 100dvh;
+	display: grid;
+	grid-template-columns: 82px minmax(240px, 290px) minmax(0, 1fr);
+	grid-template-rows: 100%;
+}
+
+.rail {
+	display: flex;
+	flex-direction: column;
+	align-items: centers;
+	padding: 18px 0;
+	border-right: 1px solid #ccc;
+}
+
+.sidebar {
+	min-width: 0;
+	border-right: 1px solid #ccc;
+	display: flex;
+	flex-direction: column;
 }
 
 h1 {
@@ -28,9 +50,38 @@ h1 {
 	gap: 10px;
 }
 
+main {
+	display: grid;
+	grid-template-rows: 120px minmax(0, 1fr) auto;
+}
+
+.chat-header {
+	border-bottom: 1px solid #ccc;
+	padding: 0 24px;
+}
+
+#log {
+	height: 300px;
+	padding: 10px;
+	overflow-y: scroll;
+	scroll-behavior: smooth;
+	margin-bottom: 10px;
+	background: #f9f9f9;
+}
+
+.controls {
+	padding: 0 clamp(20px, 5vw, 72px) 24px;
+	display: grid;
+	grid-template-columns: 1fr auto;
+	align-items: end;
+}
+
 input {
-	flex: 1;
-	padding: 8px;
+	min-height: 68px;
+	max-height: 170px;
+	border: 1px solid #ccc;
+	background: transparent;
+	padding: 14px;
 }
 
 button {
@@ -42,6 +93,8 @@ button {
 	background: linear-gradient(135deg, #f2cdcd, #d6686c);
 	cursor: pointer;
 	place-items: center;
+	height: 39px;
+	margin: 0 9px 9px 0;
 }
 
 button:hover {
@@ -51,15 +104,6 @@ button:hover {
 button:active {
 	transform: translateY(1px) scale(0.95) rotate(0deg);
 	transition: transform 0.1s ease;
-}
-
-#log {
-	height: 300px;
-	border: 1px solid #ccc;
-	padding: 10px;
-	overflow-y: scroll;
-	margin-bottom: 10px;
-	background: #f9f9f9;
 }
 
 .message {

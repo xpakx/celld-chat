@@ -55,26 +55,31 @@ onEnter msg =
 
 view : Model -> Html Msg
 view model =
-    div [ class "chat" ]
-        [ h1 [] [ text "Chat" ]
-        , p []
-            [ 
-                    div [class model.statusClass] [text (model.status ++ "  (" ++ model.username ++ ")")],
+    div [ class "app-mount" ] [
+    aside [ class "rail" ] [],
+    aside [ class "sidebar" ] [],
+    main_ [ class "chat" ]
+        [ 
+                header [ class "chat-header" ] [
+                        h1 [] [ text "Chat" ],
+                        div [class model.statusClass] [text (model.status ++ "  (" ++ model.username ++ ")")]
+                ], 
+                section [ class "messages" ] [ 
                     div [id "log"] 
                     (List.map (\msg -> Html.div [class "message"] [
                                     div [class "msg-author"] [text msg.author],
                                     div [class "msg-content"] [text msg.content]
                             ]) model.msgs)
-                    ,
-                    div [class "controls"] [
-                            input [ onEnter OnClick, 
-                            placeholder "Type a message...",
-                            value model.inputMsg,
-                            onInput OnInput ] [],
-                            button [ onClick OnClick] [ text "Send" ]
-                    ]
-            ]
+                ],
+                div [class "controls"] [
+                        input [ onEnter OnClick, 
+                        placeholder "Type a message...",
+                        value model.inputMsg,
+                        onInput OnInput ] [],
+                        button [ onClick OnClick] [ text "Send" ]
+                ]
         ]
+    ]
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =

@@ -71,6 +71,9 @@
 			if (!db.objectStoreNames.contains("keys")) {
 				db.createObjectStore("keys");
 			}
+			if (!db.objectStoreNames.contains("user-data")) {
+				db.createObjectStore("user-data");
+			}
 		};
 		// onversionchange?
 
@@ -160,6 +163,24 @@
 	    };
 	    const finPayload = JSON.stringify(msgReq);
 	    ws.send(finPayload);
+    }
+
+    async function saveName(username) {
+	    const database = await openIndexedDB();
+	    const tx = database.transaction(["user-data"], "readwrite");
+	    tx.objectStore("user-data")
+		    .put(username, "username");
+    }
+
+    async function readName() {
+	    const database = await openIndexedDB();
+	    const tx = database.transaction(["user-data"], "readonly");
+	    const request = tx.objectStore("user-data").get("username");
+
+	    return new Promise((resolve, reject) => {
+		    request.onsuccess = () => resolve(request.result);
+		    request.onerror = (event) => reject(event.target.error);
+	    });
     }
 })();
   </script>

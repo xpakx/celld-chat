@@ -6,6 +6,9 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Decode as Decode exposing (Decoder, Value)
 import Json.Encode as Encode
+import Browser.Dom as Dom
+import Task
+
 
 port sendMessage : String -> Cmd msg
 port getMessage : (String -> msg) -> Sub msg
@@ -36,6 +39,8 @@ type Msg
     | AckReceived String
     | StatusChanged String
     | HistoryUpdate History
+    | Scrolled (Result Dom.Error ())
+
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -86,7 +91,7 @@ viewHeader statusClass status username =
 
 viewMessages : List ChatMessage -> Html Msg
 viewMessages msgs =
-        section [ class "messages" ]  
+        section [ class "messages", id "log" ]  
                 (List.map (\msg -> Html.div [class "message"] [
                         div [class "msg-author"] [text msg.author],
                         div [class "msg-content"] [text msg.content]
@@ -102,6 +107,14 @@ viewControls inputMsg =
                 onInput OnInput ] [],
                 button [ onClick OnClick] [ text "Send" ]
         ]
+
+
+scrollChat : Cmd Msg
+scrollChat =
+        Dom.getViewportOf "log"
+        |> Task.andThen (\info -> Dom.setViewportOf "log" 0 info.scene.height)
+        |> Task.attempt Scrolled
+
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -121,18 +134,18 @@ update msg model =
                 MessageReceived newMsg ->
                         ( 
                         { model | msgs = model.msgs ++ [ newMsg ] }, 
-                        Cmd.none
+                        scrollChat
                         )
                 AckReceived newMsg ->
                         ( 
                         { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg } ] }, 
-                        Cmd.none
+                        scrollChat
                         )
                 HistoryUpdate history ->
                         ( 
                         { model | msgs = model.msgs ++ history.messages,
                         username = history.name}, 
-                        Cmd.none
+                        scrollChat
                         )
                 StatusChanged status ->
                         (
@@ -145,6 +158,8 @@ update msg model =
                                 },
                                 Cmd.none
                         )
+                Scrolled result ->
+                        ( model, Cmd.none )
 
 initialModel : Model
 initialModel = {

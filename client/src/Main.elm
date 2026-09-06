@@ -104,12 +104,15 @@ viewHeader statusClass status username =
 viewMessages : List ChatMessage -> Html Msg
 viewMessages msgs =
         section [ class "messages", id "log" ]  
-                (List.map (\msg -> Html.div [class "message"] [
-                        div [class "msg-author"] [text msg.author],
-                        div [class "msg-content"] [text msg.content]
-                        ]) msgs)
-       
+                (List.map viewMessage msgs)
 
+viewMessage : ChatMessage -> Html Msg
+viewMessage msg =
+        Html.div [ class "message" ] [ 
+                div [ class "msg-author" ] [ text msg.author ],
+                div [ class "msg-content" ] [ text msg.content ]
+        ]
+       
 viewControls : String -> Html Msg
 viewControls inputMsg =
         div [class "controls"] [
@@ -124,7 +127,8 @@ viewControls inputMsg =
 scrollChat : Cmd Msg
 scrollChat =
         Dom.getViewportOf "log"
-        |> Task.andThen (\info -> Dom.setViewportOf "log" 0 info.scene.height)
+        |> Task.map (.scene >> .height)
+        |> Task.andThen (Dom.setViewportOf "log" 0)
         |> Task.attempt Scrolled
 
 

@@ -1,5 +1,10 @@
+:root {
+  --font-heading: 'Dosis', sans-serif;
+  --font-body: 'Inria Serif', serif;
+}
+
 body {
-	font-family: sans-serif;
+	font-family: var(--font-body);
 	overflow: hidden;
 	color: #08090b;
 }
@@ -28,11 +33,11 @@ body {
 }
 
 h1 {
-	font-family: "Dosis", sans-serif;
+	font-family: var(--font-heading);
 }
 
 .status {
-	font-family: "Dosis", sans-serif;
+	font-family: var(--font-heading);
 	font-weight: bold;
 	margin-bottom: 10px;
 }
@@ -60,8 +65,7 @@ main {
 	padding: 0 24px;
 }
 
-#log {
-	height: 300px;
+.messages {
 	padding: 10px;
 	overflow-y: scroll;
 	scroll-behavior: smooth;
@@ -86,7 +90,7 @@ textarea {
 }
 
 button {
-	font-family: "Dosis", sans-serif;
+	font-family: var(--font-heading);
 	letter-spacing: 0.2rem;
 	padding: 8px 16px;
 	border: 1px solid rgba(10, 10, 10, .55);
@@ -112,6 +116,7 @@ button:active {
 }
 
 .msg-author {
+	font-family: var(--font-heading);
 	font-weight: bold;
 }
 

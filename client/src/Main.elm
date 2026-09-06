@@ -86,13 +86,12 @@ viewHeader statusClass status username =
 
 viewMessages : List ChatMessage -> Html Msg
 viewMessages msgs =
-        section [ class "messages" ] [ 
-                div [id "log"] 
+        section [ class "messages" ]  
                 (List.map (\msg -> Html.div [class "message"] [
                         div [class "msg-author"] [text msg.author],
                         div [class "msg-content"] [text msg.content]
                         ]) msgs)
-        ]
+       
 
 viewControls : String -> Html Msg
 viewControls inputMsg =

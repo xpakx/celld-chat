@@ -72,7 +72,19 @@ viewRail =
 
 viewSidebar : Html Msg
 viewSidebar =
-    aside [ class "sidebar" ] []
+    aside [ class "sidebar" ] [
+            h2 [ class "sidebar-title" ] [ text "Conversations" ],
+            div [ class "sidebar-label" ] [ text "Channels" ],
+            div [ class "channels" ] [
+                    button [ class "channel" ] [
+                            div [ class "channel-name" ] [
+                                    span [ class "level open" ] [],
+                                    text "Global"
+                            ]
+                    ]
+
+            ]
+    ]
 
 viewChat : Model -> Html Msg
 viewChat model =

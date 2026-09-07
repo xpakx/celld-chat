@@ -11,6 +11,7 @@ import Task
 
 
 port sendMessage : String -> Cmd msg
+port changeUsername : String -> Cmd msg
 port getMessage : (String -> msg) -> Sub msg
 port changeStatus : (String -> msg) -> Sub msg
 
@@ -40,6 +41,7 @@ type Msg
     | StatusChanged String
     | HistoryUpdate History
     | Scrolled (Result Dom.Error ())
+    | UsernameBlurred String
 
 
 onEnter : Msg -> Attribute Msg
@@ -62,7 +64,7 @@ view : Model -> Html Msg
 view model =
     div [ class "app-mount" ] [
             viewRail,
-            viewSidebar,
+            viewSidebar model,
             viewChat model
     ]
 
@@ -70,8 +72,8 @@ viewRail : Html Msg
 viewRail =
     aside [ class "rail" ] []
 
-viewSidebar : Html Msg
-viewSidebar =
+viewSidebar : Model -> Html Msg
+viewSidebar model =
     aside [ class "sidebar" ] [
             h2 [ class "sidebar-title" ] [ text "Conversations" ],
             div [ class "sidebar-label" ] [ text "Channels" ],
@@ -83,22 +85,27 @@ viewSidebar =
                             ]
                     ]
 
-            ]
+            ],
+            div [ 
+                    class "profile",
+                    onBlurWithContent UsernameBlurred,
+                    attribute "contenteditable" "true"
+                ] [ text model.username ]
     ]
 
 viewChat : Model -> Html Msg
 viewChat model =
     main_ [ class "chat" ] [ 
-            viewHeader model.statusClass model.status model.username,
+            viewHeader model.statusClass model.status,
             viewMessages model.msgs,
             viewControls model.inputMsg
         ]
 
-viewHeader : String -> String -> String -> Html Msg
-viewHeader statusClass status username =
+viewHeader : String -> String -> Html Msg
+viewHeader statusClass status =
         header [ class "chat-header" ] [
                 h1 [] [ text "Chat" ],
-                div [class statusClass] [text (status ++ "  (" ++ username ++ ")")]
+                div [class statusClass] [text status]
         ] 
 
 viewMessages : List ChatMessage -> Html Msg
@@ -122,6 +129,11 @@ viewControls inputMsg =
                 onInput OnInput ] [],
                 button [ onClick OnClick] [ text "Send" ]
         ]
+
+onBlurWithContent : (String -> msg) -> Attribute msg
+onBlurWithContent toMsg =
+        on "blur"
+                (Decode.map toMsg (Decode.at ["target", "textContent"] Decode.string))
 
 
 scrollChat : Cmd Msg
@@ -176,6 +188,11 @@ update msg model =
                         )
                 Scrolled result ->
                         ( model, Cmd.none )
+                UsernameBlurred newName -> 
+                        if String.isEmpty (String.trim newName) then
+                                (model, Cmd.none)
+                        else
+                                ({ model | username = newName }, changeUsername newName)
 
 initialModel : Model
 initialModel = {

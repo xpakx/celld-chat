@@ -50,6 +50,14 @@ body {
 }
 
 .channels {
+	flex-grow: 1;
+}
+
+.profile {
+	padding: 25px 23px 18px;
+	margin: 8px 0 3px;
+	border-top: 1px solid #ccc;
+	height: 50px;
 }
 
 .channel {

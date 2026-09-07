@@ -22,6 +22,7 @@
 
     let db = null;
     const identity = await getIdentity();
+    const name = await readName();
     const WS_URL = "ws://localhost:8080/ws"; 
     app.ports.getMessage.send("Connecting to " + WS_URL + "...");
     const ws = new WebSocket(WS_URL);
@@ -29,7 +30,7 @@
     ws.onopen = () => {
         app.ports.getMessage.send("Connected successfully!");
         app.ports.changeStatus.send("Connected");
-	register(ws, identity);
+	register(ws, identity, name);
     };
 
     ws.onmessage = (event) => {
@@ -53,6 +54,11 @@
 	    }
     });
 
+    app.ports.changeUsername.subscribe(function(username) {
+	    console.log(username);
+	    saveName(username);
+    });
+
 
 
     function openIndexedDB() {
@@ -71,8 +77,8 @@
 			if (!db.objectStoreNames.contains("keys")) {
 				db.createObjectStore("keys");
 			}
-			if (!db.objectStoreNames.contains("user-data")) {
-				db.createObjectStore("user-data");
+			if (!db.objectStoreNames.contains("userData")) {
+				db.createObjectStore("userData");
 			}
 		};
 		// onversionchange?
@@ -127,9 +133,7 @@
 	    return { keyPair, pubJwk, fingerprint };
     }
 
-    function register(ws, identity) {
-	    // TODO: load username form indexeddb
-	    const username = undefined;
+    function register(ws, identity, username) {
 	    let regReq = {
 		    type: 'register',
 		    pubJwk: identity.pubJwk,
@@ -167,15 +171,15 @@
 
     async function saveName(username) {
 	    const database = await openIndexedDB();
-	    const tx = database.transaction(["user-data"], "readwrite");
-	    tx.objectStore("user-data")
+	    const tx = database.transaction(["userData"], "readwrite");
+	    tx.objectStore("userData")
 		    .put(username, "username");
     }
 
     async function readName() {
 	    const database = await openIndexedDB();
-	    const tx = database.transaction(["user-data"], "readonly");
-	    const request = tx.objectStore("user-data").get("username");
+	    const tx = database.transaction(["userData"], "readonly");
+	    const request = tx.objectStore("userData").get("username");
 
 	    return new Promise((resolve, reject) => {
 		    request.onsuccess = () => resolve(request.result);

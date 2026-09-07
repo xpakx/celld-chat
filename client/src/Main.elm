@@ -26,7 +26,9 @@ type alias Model = {
 
 type alias ChatMessage = {
         author : String,
-        content : String
+        content : String,
+        verified : Bool,
+        fingerprint : String
         }
 
 type alias History = {
@@ -44,6 +46,9 @@ type Msg
     | Scrolled (Result Dom.Error ())
     | UsernameBlurred String
     | RegisterAck String
+    | SystemMessage String
+
+
 
 
 onEnter : Msg -> Attribute Msg
@@ -168,7 +173,7 @@ update msg model =
                         )
                 AckReceived newMsg ->
                         ( 
-                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg } ] }, 
+                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg, verified = True, fingerprint = "" } ] }, 
                         scrollChat
                         )
                 HistoryUpdate history ->
@@ -200,6 +205,8 @@ update msg model =
                                 { model | username = name },
                                 Cmd.none
                         )
+                SystemMessage result ->
+                        ( model, Cmd.none )
 
 initialModel : Model
 initialModel = {
@@ -230,9 +237,11 @@ messageContentDecoder =
 
 messageHelperDecoder : Decoder ChatMessage
 messageHelperDecoder =
-        Decode.map2 ChatMessage
+        Decode.map4 ChatMessage
                 (Decode.field "author" Decode.string)
                 (Decode.field "content" Decode.string)
+                (Decode.field "verified" Decode.bool)
+                (Decode.field "fingerprint" Decode.string)
 
 historyDecoder : Decoder History
 historyDecoder =
@@ -253,31 +262,24 @@ routeByMessageType msgType rawJson =
         case msgType of
                 "message" -> case Decode.decodeString messageHelperDecoder rawJson of
                         Ok content -> MessageReceived content
-                        Err _ -> MessageReceived 
-                                { author = "system", content = "error" }
+                        Err _ -> SystemMessage "error" 
                 "history" -> case Decode.decodeString historyDecoder rawJson of
                         Ok content -> HistoryUpdate content
-                        Err _ -> MessageReceived 
-                                { author = "system", content = "error" }
+                        Err _ -> SystemMessage "error" 
                 "ack" -> case Decode.decodeString ackDecoder rawJson of
                         Ok content -> AckReceived content
-                        Err _ -> MessageReceived 
-                                { author = "system", content = "error" }
+                        Err _ -> SystemMessage "error" 
                 "register_ack" -> case Decode.decodeString registerAckDecoder rawJson of
                         Ok content -> RegisterAck content
-                        Err _ -> MessageReceived 
-                                { author = "system", content = "error" }
-                _ -> MessageReceived 
-                        { author = "system", content = "error" }
+                        Err _ -> SystemMessage "error" 
+                _ -> SystemMessage "error" 
 
 handleIncomingMsg : String -> Msg
 handleIncomingMsg rawJson =
     case Decode.decodeString typeDecoder rawJson of
         Ok msgType ->
                 routeByMessageType msgType rawJson
-        Err _ ->
-                MessageReceived 
-                        { author = "system", content = rawJson }
+        Err _ -> SystemMessage rawJson
 
 main = Browser.element {
         init = init,

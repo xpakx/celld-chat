@@ -61,7 +61,7 @@ export class ChatRoom extends DurableObject {
 		const history = [...cursor].map((row: any) => { return {
 				author: row.author,
 				content: row.content,
-				verified: row.verified,
+				verified: row.verified ? true : false,
 				fingerprint: row.fingerprint
 		}});
 

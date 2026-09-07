@@ -21,7 +21,8 @@ type alias Model = {
         msgs : List ChatMessage,
         status: String,
         statusClass: String,
-        username : String
+        username : String,
+        fingerprint : String
         }
 
 type alias ChatMessage = {
@@ -36,6 +37,11 @@ type alias History = {
         name : String
         }
 
+type alias RegisterAckMsg = {
+        name : String,
+        fingerprint : String
+        }
+
 type Msg
     = OnClick
     | OnInput String
@@ -45,7 +51,7 @@ type Msg
     | HistoryUpdate History
     | Scrolled (Result Dom.Error ())
     | UsernameBlurred String
-    | RegisterAck String
+    | RegisterAck RegisterAckMsg
     | SystemMessage String
 
 
@@ -104,7 +110,7 @@ viewChat : Model -> Html Msg
 viewChat model =
     main_ [ class "chat" ] [ 
             viewHeader model.statusClass model.status,
-            viewMessages model.msgs,
+            viewMessages model.fingerprint model.msgs,
             viewControls model.inputMsg
         ]
 
@@ -115,14 +121,20 @@ viewHeader statusClass status =
                 div [class statusClass] [text status]
         ] 
 
-viewMessages : List ChatMessage -> Html Msg
-viewMessages msgs =
+viewMessages : String -> List ChatMessage -> Html Msg
+viewMessages userFingerprint msgs =
         section [ class "messages", id "log" ]  
-                (List.map viewMessage msgs)
+                (List.map (viewMessage userFingerprint) msgs)
 
-viewMessage : ChatMessage -> Html Msg
-viewMessage msg =
-        Html.div [ class "message" ] [ 
+viewMessage : String -> ChatMessage -> Html Msg
+viewMessage userFingerprint msg =
+        Html.div [
+                classList 
+                [
+                        ("message", True), 
+                        ("authored", msg.fingerprint == userFingerprint)
+                ] 
+        ] [ 
                 div [ class "msg-author" ] [ text msg.author ],
                 div [ class "msg-content" ] [ text msg.content ]
         ]
@@ -173,7 +185,7 @@ update msg model =
                         )
                 AckReceived newMsg ->
                         ( 
-                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg, verified = True, fingerprint = "" } ] }, 
+                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg, verified = True, fingerprint = model.fingerprint } ] }, 
                         scrollChat
                         )
                 HistoryUpdate history ->
@@ -200,9 +212,9 @@ update msg model =
                                 (model, Cmd.none)
                         else
                                 ({ model | username = newName }, changeUsername newName)
-                RegisterAck name ->
+                RegisterAck regAck ->
                         (
-                                { model | username = name },
+                                { model | username = regAck.name, fingerprint = regAck.fingerprint },
                                 Cmd.none
                         )
                 SystemMessage result ->
@@ -214,7 +226,8 @@ initialModel = {
         msgs = [],
         status = "Disconnected",
         statusClass = "status disconnected",
-        username = "unknown"
+        username = "unknown",
+        fingerprint = ""
         }
 
 init: () -> (Model, Cmd Msg)
@@ -253,9 +266,11 @@ ackDecoder : Decoder String
 ackDecoder =
         Decode.field "content" Decode.string
 
-registerAckDecoder : Decoder String
+registerAckDecoder : Decoder RegisterAckMsg
 registerAckDecoder =
-        Decode.field "author" Decode.string
+        Decode.map2 RegisterAckMsg
+                (Decode.field "author" Decode.string)
+                (Decode.field "fingerprint" Decode.string)
 
 routeByMessageType : String -> String -> Msg
 routeByMessageType msgType rawJson =

@@ -191,7 +191,7 @@ update msg model =
                 Scrolled result ->
                         ( model, Cmd.none )
                 UsernameBlurred newName -> 
-                        if String.isEmpty (String.trim newName) then
+                        if String.isEmpty (String.trim newName) || newName == model.username then
                                 (model, Cmd.none)
                         else
                                 ({ model | username = newName }, changeUsername newName)

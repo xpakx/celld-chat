@@ -12,6 +12,7 @@ import Task
 
 port sendMessage : String -> Cmd msg
 port changeUsername : String -> Cmd msg
+
 port getMessage : (String -> msg) -> Sub msg
 port changeStatus : (String -> msg) -> Sub msg
 
@@ -42,6 +43,7 @@ type Msg
     | HistoryUpdate History
     | Scrolled (Result Dom.Error ())
     | UsernameBlurred String
+    | RegisterAck String
 
 
 onEnter : Msg -> Attribute Msg
@@ -193,6 +195,11 @@ update msg model =
                                 (model, Cmd.none)
                         else
                                 ({ model | username = newName }, changeUsername newName)
+                RegisterAck name ->
+                        (
+                                { model | username = name },
+                                Cmd.none
+                        )
 
 initialModel : Model
 initialModel = {
@@ -237,6 +244,10 @@ ackDecoder : Decoder String
 ackDecoder =
         Decode.field "content" Decode.string
 
+registerAckDecoder : Decoder String
+registerAckDecoder =
+        Decode.field "author" Decode.string
+
 routeByMessageType : String -> String -> Msg
 routeByMessageType msgType rawJson =
         case msgType of
@@ -250,6 +261,10 @@ routeByMessageType msgType rawJson =
                                 { author = "system", content = "error" }
                 "ack" -> case Decode.decodeString ackDecoder rawJson of
                         Ok content -> AckReceived content
+                        Err _ -> MessageReceived 
+                                { author = "system", content = "error" }
+                "register_ack" -> case Decode.decodeString registerAckDecoder rawJson of
+                        Ok content -> RegisterAck content
                         Err _ -> MessageReceived 
                                 { author = "system", content = "error" }
                 _ -> MessageReceived 

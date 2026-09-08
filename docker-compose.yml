@@ -41,6 +41,11 @@ services:
       --advertise 127.0.0.1:8081
       --internal-listen 127.0.0.1:8081
 
+  client:
+    build: ./client
+    ports:
+      - "3000:80"
+
 volumes:
   rustfs-data:
   celld-state:

@@ -17,7 +17,8 @@
   <script>
 (async () => {
     var app = Elm.Main.init({
-      node: document.getElementById('app')
+      node: document.getElementById('app'),
+      flags: ['test', 'test2']
     });
 
     let db = null;

@@ -22,7 +22,8 @@ type alias Model = {
         status: String,
         statusClass: String,
         username : String,
-        fingerprint : String
+        fingerprint : String,
+        channels : List String
         }
 
 type alias ChatMessage = {
@@ -90,21 +91,24 @@ viewSidebar model =
     aside [ class "sidebar" ] [
             h2 [ class "sidebar-title" ] [ text "Conversations" ],
             div [ class "sidebar-label" ] [ text "Channels" ],
-            div [ class "channels" ] [
-                    button [ class "channel" ] [
-                            div [ class "channel-name" ] [
-                                    span [ class "level open" ] [],
-                                    text "Global"
-                            ]
-                    ]
-
-            ],
+            div [ class "channels" ] (
+                    [viewChannel "Global"] ++
+                    List.map viewChannel model.channels
+            ),
             div [ 
                     class "profile",
                     onBlurWithContent UsernameBlurred,
                     attribute "contenteditable" "true"
                 ] [ text model.username ]
     ]
+
+viewChannel name = 
+        button [ class "channel" ] [
+                div [ class "channel-name" ] [
+                        span [ class "level open" ] [],
+                        text name
+                ]
+        ]
 
 viewChat : Model -> Html Msg
 viewChat model =
@@ -227,11 +231,12 @@ initialModel = {
         status = "Disconnected",
         statusClass = "status disconnected",
         username = "unknown",
-        fingerprint = ""
+        fingerprint = "",
+        channels = []
         }
 
-init: () -> (Model, Cmd Msg)
-init _ = ( initialModel, Cmd.none )
+init: List String -> (Model, Cmd Msg)
+init  channels = ( {initialModel | channels = channels}, Cmd.none )
 
 subscriptions : Model -> Sub Msg
 subscriptions model =

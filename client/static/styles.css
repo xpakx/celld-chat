@@ -84,6 +84,8 @@ body {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	height: auto;
+	margin: 0;
 }
 
 .channel:hover {

@@ -26,25 +26,35 @@
     const name = await readName();
     const WS_URL = "ws://localhost:8080/ws"; 
     app.ports.getMessage.send("Connecting to " + WS_URL + "...");
-    const ws = new WebSocket(WS_URL);
+    let ws = connectWS();
 
-    ws.onopen = () => {
+    function connectWS(channel = undefined) {
+	const url = WS_URL + (channel ? `?room=${channel}` : "");
+	const ws = new WebSocket(url);
+        ws.onopen = onWSOpen;
+        ws.onmessage = onWSMessage;
+        ws.onerror = onWSError;
+        ws.onclose = onWSClose;
+	return ws;
+    }
+
+    function onWSOpen() {
         app.ports.getMessage.send("Connected successfully!");
         app.ports.changeStatus.send("Connected");
 	register(ws, identity, name);
-    };
+    }
 
-    ws.onmessage = (event) => {
-	console.log(event.data);
-        app.ports.getMessage.send(event.data);
-    };
+    function onWSMessage(event) {
+       console.log(event.data);
+       app.ports.getMessage.send(event.data);
+    } 
 
-    ws.onerror = (error) => {
+    function onWSError(error) {
         app.ports.getMessage.send("WebSocket Error occurred.");
         console.log(error);
     };
 
-    ws.onclose = () => {
+    function onWSClose() {
         app.ports.getMessage.send("Connection closed.");
         app.ports.changeStatus.send("Disconnected");
     };
@@ -60,7 +70,9 @@
 	    saveName(username);
     });
 
-
+    app.ports.switchChannel.subscribe(function(channelName) {
+	    ws = connectWS(channelName);
+    });
 
     function openIndexedDB() {
 	if (db) return Promise.resolve(db);

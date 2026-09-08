@@ -12,6 +12,7 @@ import Task
 
 port sendMessage : String -> Cmd msg
 port changeUsername : String -> Cmd msg
+port switchChannel : String -> Cmd msg
 
 port getMessage : (String -> msg) -> Sub msg
 port changeStatus : (String -> msg) -> Sub msg
@@ -54,6 +55,7 @@ type Msg
     | UsernameBlurred String
     | RegisterAck RegisterAckMsg
     | SystemMessage String
+    | SwitchChannel String
 
 
 
@@ -102,8 +104,12 @@ viewSidebar model =
                 ] [ text model.username ]
     ]
 
+viewChannel : String -> Html Msg
 viewChannel name = 
-        button [ class "channel" ] [
+        button [ 
+                class "channel",
+                onClick (SwitchChannel name)
+        ] [
                 div [ class "channel-name" ] [
                         span [ class "level open" ] [],
                         text name
@@ -223,6 +229,8 @@ update msg model =
                         )
                 SystemMessage result ->
                         ( model, Cmd.none )
+                SwitchChannel name ->
+                        ( model, switchChannel name )
 
 initialModel : Model
 initialModel = {

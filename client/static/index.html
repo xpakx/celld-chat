@@ -29,7 +29,7 @@
     let ws = connectWS();
 
     function connectWS(channel = undefined) {
-	const url = WS_URL + (channel ? `?room=${channel}` : "");
+	const url = WS_URL + (channel && channel !== "Global" ? `?room=${channel}` : "");
 	const ws = new WebSocket(url);
         ws.onopen = onWSOpen;
         ws.onmessage = onWSMessage;
@@ -71,6 +71,7 @@
     });
 
     app.ports.switchChannel.subscribe(function(channelName) {
+	    if (ws) ws.close();
 	    ws = connectWS(channelName);
     });
 

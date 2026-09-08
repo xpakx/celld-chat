@@ -230,7 +230,7 @@ update msg model =
                 SystemMessage result ->
                         ( model, Cmd.none )
                 SwitchChannel name ->
-                        ( model, switchChannel name )
+                        ( { model | msgs = [] }, switchChannel name )
 
 initialModel : Model
 initialModel = {

@@ -13,6 +13,7 @@ import Task
 port sendMessage : String -> Cmd msg
 port changeUsername : String -> Cmd msg
 port switchChannel : String -> Cmd msg
+port newChannel : String -> Cmd msg
 
 port getMessage : (String -> msg) -> Sub msg
 port changeStatus : (String -> msg) -> Sub msg
@@ -25,7 +26,8 @@ type alias Model = {
         username : String,
         fingerprint : String,
         channels : List String,
-        currentChannel : String
+        currentChannel : String,
+        showNewChannel : Bool
         }
 
 type alias ChatMessage = {
@@ -57,6 +59,8 @@ type Msg
     | RegisterAck RegisterAckMsg
     | SystemMessage String
     | SwitchChannel String
+    | ShowNewChannel
+    | NewChannelBlurred String
 
 
 
@@ -96,7 +100,18 @@ viewSidebar model =
             div [ class "sidebar-label" ] [ text "Channels" ],
             div [ class "channels" ] (
                     [viewChannel model.currentChannel "Global"] ++
-                    List.map (viewChannel model.currentChannel) model.channels
+                    List.map (viewChannel model.currentChannel) model.channels ++
+                    [
+                            if model.showNewChannel then
+                                    div [
+                                            class "channel new-channel",
+                                            onBlurWithContent NewChannelBlurred,
+                                            attribute "contenteditable" "true"
+                                    ] [text "Global"]
+                            else
+                                    button [ class "new-channel-btn", onClick ShowNewChannel] [ text "Open" ]
+                    ]
+
             ),
             div [ 
                     class "profile",
@@ -243,6 +258,26 @@ update msg model =
                                 (model, Cmd.none)
                         else
                                 ( { model | msgs = [], currentChannel = name }, switchChannel name )
+                ShowNewChannel ->
+                        ( { model | showNewChannel = True }, Cmd.none )
+                NewChannelBlurred name ->
+                        if String.isEmpty name || name == model.currentChannel then
+                                ( { model | showNewChannel = False }, Cmd.none)
+                        else
+                                ( { 
+                                        model | showNewChannel = False,
+                                        msgs = [],
+                                        currentChannel = name,
+                                        channels = if List.member name model.channels then 
+                                                model.channels
+                                        else
+                                                model.channels ++ [ name ]
+                                }, 
+                                if List.member name model.channels then
+                                        switchChannel name
+                                else
+                                        newChannel name 
+                                )
 
 initialModel : Model
 initialModel = {
@@ -253,7 +288,8 @@ initialModel = {
         username = "unknown",
         fingerprint = "",
         channels = [],
-        currentChannel = "Global"
+        currentChannel = "Global",
+        showNewChannel = False
         }
 
 init: List String -> (Model, Cmd Msg)

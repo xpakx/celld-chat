@@ -147,7 +147,8 @@ viewMessage userFingerprint msg =
                 classList 
                 [
                         ("message", True), 
-                        ("authored", msg.fingerprint == userFingerprint)
+                        ("authored", msg.fingerprint == userFingerprint),
+                        ("system", msg.fingerprint == "system")
                 ] 
         ] [ 
                 div [ class "msg-author" ] [ text msg.author ],
@@ -233,7 +234,10 @@ update msg model =
                                 Cmd.none
                         )
                 SystemMessage result ->
-                        ( model, Cmd.none )
+                        ( 
+                        { model | msgs = model.msgs ++ [ { author = "System", content = result, verified = True, fingerprint = "system" } ] }, 
+                        scrollChat
+                        )
                 SwitchChannel name ->
                         if String.isEmpty name || name == model.currentChannel then
                                 (model, Cmd.none)

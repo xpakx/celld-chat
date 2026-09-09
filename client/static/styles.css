@@ -164,6 +164,12 @@ main {
 	align-items: end;
 }
 
+.message.system {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
 .controls {
 	padding: 0 clamp(20px, 5vw, 72px) 24px;
 	display: grid;
@@ -224,8 +230,6 @@ button:active {
 	overflow-wrap: anywhere;
 }
 
-
-
 .message.authored .msg-content {
 	background: #a9dfba;
 	border-radius: 15px 0 15px 15px;
@@ -234,4 +238,15 @@ button:active {
 	max-width: min(620px, 100%);
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
+}
+
+
+.message.system .msg-author {
+	display: none;
+}
+
+.message.system .msg-content {
+	background: transparent;
+	border: none;
+	color: #aaa;
 }

@@ -16,12 +16,14 @@
   <script src="elm.js"></script>
   <script>
 (async () => {
+    let db = null;
+    const channels = await getChannelNames();
+
     var app = Elm.Main.init({
       node: document.getElementById('app'),
-      flags: ['test', 'test2']
+      flags: channels
     });
 
-    let db = null;
     const identity = await getIdentity();
     const name = await readName();
     const WS_URL = "ws://localhost:8080/ws"; 
@@ -75,6 +77,12 @@
 	    ws = connectWS(channelName);
     });
 
+    app.ports.newChannel.subscribe(function(channelName) {
+	    if (ws) ws.close();
+	    ws = connectWS(channelName);
+	    saveChannel(channelName);
+    });
+
     function openIndexedDB() {
 	if (db) return Promise.resolve(db);
 
@@ -93,6 +101,9 @@
 			}
 			if (!db.objectStoreNames.contains("userData")) {
 				db.createObjectStore("userData");
+			}
+			if (!db.objectStoreNames.contains('channels')) {
+				const store = db.createObjectStore('channels', { keyPath: 'name' });
 			}
 		};
 		// onversionchange?
@@ -197,6 +208,27 @@
 
 	    return new Promise((resolve, reject) => {
 		    request.onsuccess = () => resolve(request.result);
+		    request.onerror = (event) => reject(event.target.error);
+	    });
+    }
+
+    async function saveChannel(channel) {
+	    const db = await openIndexedDB();
+	    const tx = db.transaction('channels', 'readwrite');
+
+	    tx.objectStore("channels").put({
+		    name: channel,
+	    });
+    }
+
+    async function getChannelNames() {
+	    const database = await openIndexedDB();
+	    const tx = database.transaction(["channels"], "readonly");
+
+	    const request = tx.objectStore("channels").getAll();
+
+	    return new Promise((resolve, reject) => {
+		    request.onsuccess = () => resolve(request.result.map(r => r.name));
 		    request.onerror = (event) => reject(event.target.error);
 	    });
     }

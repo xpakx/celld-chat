@@ -24,7 +24,8 @@ type alias Model = {
         statusClass: String,
         username : String,
         fingerprint : String,
-        channels : List String
+        channels : List String,
+        currentChannel : String
         }
 
 type alias ChatMessage = {
@@ -230,7 +231,10 @@ update msg model =
                 SystemMessage result ->
                         ( model, Cmd.none )
                 SwitchChannel name ->
-                        ( { model | msgs = [] }, switchChannel name )
+                        if String.isEmpty name || name == model.currentChannel then
+                                (model, Cmd.none)
+                        else
+                                ( { model | msgs = [], currentChannel = name }, switchChannel name )
 
 initialModel : Model
 initialModel = {
@@ -240,7 +244,8 @@ initialModel = {
         statusClass = "status disconnected",
         username = "unknown",
         fingerprint = "",
-        channels = []
+        channels = [],
+        currentChannel = "Global"
         }
 
 init: List String -> (Model, Cmd Msg)

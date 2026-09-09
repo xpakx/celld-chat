@@ -87,10 +87,19 @@ body {
 	height: auto;
 	margin: 0;
 }
-
 .channel:hover {
 	background: rgba(40, 40, 40, 0.025);
 }
+
+.current-channel {
+	background: rgba(248, 216, 174, 0.25);
+	color: #555;
+}
+
+.current-channel:hover {
+	background: rgba(248, 216, 174, 0.1);
+}
+
 
 .channel .level {
 	display: inline-block;

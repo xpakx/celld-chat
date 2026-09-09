@@ -95,8 +95,8 @@ viewSidebar model =
             h2 [ class "sidebar-title" ] [ text "Conversations" ],
             div [ class "sidebar-label" ] [ text "Channels" ],
             div [ class "channels" ] (
-                    [viewChannel "Global"] ++
-                    List.map viewChannel model.channels
+                    [viewChannel model.currentChannel "Global"] ++
+                    List.map (viewChannel model.currentChannel) model.channels
             ),
             div [ 
                     class "profile",
@@ -105,10 +105,14 @@ viewSidebar model =
                 ] [ text model.username ]
     ]
 
-viewChannel : String -> Html Msg
-viewChannel name = 
+viewChannel : String -> String -> Html Msg
+viewChannel current name = 
         button [ 
-                class "channel",
+                classList 
+                [
+                        ("channel", True), 
+                        ("current-channel", current == name)
+                ],
                 onClick (SwitchChannel name)
         ] [
                 div [ class "channel-name" ] [
@@ -120,15 +124,15 @@ viewChannel name =
 viewChat : Model -> Html Msg
 viewChat model =
     main_ [ class "chat" ] [ 
-            viewHeader model.statusClass model.status,
+            viewHeader model.statusClass model.status model.currentChannel,
             viewMessages model.fingerprint model.msgs,
             viewControls model.inputMsg
         ]
 
-viewHeader : String -> String -> Html Msg
-viewHeader statusClass status =
+viewHeader : String -> String -> String -> Html Msg
+viewHeader statusClass status currentChannel =
         header [ class "chat-header" ] [
-                h1 [] [ text "Chat" ],
+                h1 [] [ text currentChannel ],
                 div [class statusClass] [text status]
         ] 
 

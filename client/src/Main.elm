@@ -61,9 +61,7 @@ type Msg
     | SwitchChannel String
     | ShowNewChannel
     | NewChannelBlurred String
-
-
-
+    | FocusResult (Result Dom.Error ())
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -105,9 +103,10 @@ viewSidebar model =
                             if model.showNewChannel then
                                     div [
                                             class "channel new-channel",
+                                            id "new-channel-input",
                                             onBlurWithContent NewChannelBlurred,
                                             attribute "contenteditable" "true"
-                                    ] [text "Global"]
+                                    ] [text ""]
                             else
                                     button [ class "new-channel-btn", onClick ShowNewChannel] [ text "Open" ]
                     ]
@@ -193,6 +192,10 @@ scrollChat =
         |> Task.andThen (Dom.setViewportOf "log" 0)
         |> Task.attempt Scrolled
 
+focus : String -> Cmd Msg
+focus elementId =
+    Dom.focus elementId
+        |> Task.attempt FocusResult
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -259,7 +262,7 @@ update msg model =
                         else
                                 ( { model | msgs = [], currentChannel = name }, switchChannel name )
                 ShowNewChannel ->
-                        ( { model | showNewChannel = True }, Cmd.none )
+                        ( { model | showNewChannel = True }, focus "new-channel-input" )
                 NewChannelBlurred name ->
                         if String.isEmpty name || name == model.currentChannel then
                                 ( { model | showNewChannel = False }, Cmd.none)
@@ -278,6 +281,8 @@ update msg model =
                                 else
                                         newChannel name 
                                 )
+                FocusResult result ->
+                        ( model, Cmd.none )
 
 initialModel : Model
 initialModel = {

@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { time } from "node:console";
 
 export interface Env {
 	CHAT_ROOM: DurableObjectNamespace;
@@ -28,7 +29,7 @@ export class ChatRoom extends DurableObject {
 					id INTEGER PRIMARY KEY AUTOINCREMENT,
 					content TEXT,
 					author TEXT,
-					timestamp TEXT,
+					timestamp INT,
 					verified BOOLEAN,
 					fingerprint TEXT
 				)
@@ -56,13 +57,14 @@ export class ChatRoom extends DurableObject {
 		server.serializeAttachment({ name: authorName });
 
 		const cursor = this.ctx.storage.sql.exec(
-			"SELECT content, author, verified, fingerprint FROM (SELECT id, content, author, verified, fingerprint FROM messages ORDER BY id DESC LIMIT 30) ORDER BY id ASC"
+			"SELECT content, author, verified, fingerprint, timestamp FROM (SELECT id, content, author, verified, fingerprint, timestamp FROM messages ORDER BY id DESC LIMIT 30) ORDER BY id ASC"
 		);
 		const history = [...cursor].map((row: any) => { return {
 				author: row.author,
 				content: row.content,
 				verified: row.verified ? true : false,
-				fingerprint: row.fingerprint
+				fingerprint: row.fingerprint,
+				timestamp: row.timestamp
 		}});
 
 		server.send(
@@ -112,11 +114,12 @@ export class ChatRoom extends DurableObject {
 
 		const verified = await this.verifyMessage(message, data);
 		const fingerprint = verified ? data.fingerprint : undefined;
+		const timestamp = new Date(message.timestamp).getTime();
 		this.ctx.storage.sql.exec(
 			"INSERT INTO messages (content, author, timestamp, verified, fingerprint) VALUES (?, ?, ?, ?, ?)",
 			message.msg,
 			data.name,
-			new Date(message.timestamp).toISOString(),
+			timestamp,
 			verified,
 			fingerprint
 		);
@@ -127,7 +130,8 @@ export class ChatRoom extends DurableObject {
 				content: message.msg,
 				author: data.name,
 				verified: verified,
-				fingerprint: fingerprint
+				fingerprint: fingerprint,
+				timestamp: timestamp,
 			}
 		);
 		const msgAck = JSON.stringify(
@@ -135,6 +139,7 @@ export class ChatRoom extends DurableObject {
 				type: "ack",
 				content: message.msg,
 				verified: verified,
+				timestamp: timestamp,
 			}
 		);
 

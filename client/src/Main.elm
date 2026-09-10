@@ -8,6 +8,7 @@ import Json.Decode as Decode exposing (Decoder, Value)
 import Json.Encode as Encode
 import Browser.Dom as Dom
 import Task
+import Time exposing (Posix)
 
 
 port sendMessage : String -> Cmd msg
@@ -35,7 +36,8 @@ type alias ChatMessage = {
         author : String,
         content : String,
         verified : Bool,
-        fingerprint : String
+        fingerprint : String,
+        timestamp: Posix
         }
 
 type alias History = {
@@ -225,7 +227,7 @@ update msg model =
                         )
                 AckReceived newMsg ->
                         ( 
-                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg, verified = True, fingerprint = model.fingerprint } ] }, 
+                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg, verified = True, fingerprint = model.fingerprint, timestamp = Time.millisToPosix 0 } ] }, 
                         scrollChat
                         )
                 HistoryUpdate history ->
@@ -259,7 +261,7 @@ update msg model =
                         )
                 SystemMessage result ->
                         ( 
-                        { model | msgs = model.msgs ++ [ { author = "System", content = result, verified = True, fingerprint = "system" } ] }, 
+                        { model | msgs = model.msgs ++ [ { author = "System", content = result, verified = True, fingerprint = "system", timestamp = Time.millisToPosix 0 } ] }, 
                         scrollChat
                         )
                 SwitchChannel name ->
@@ -325,11 +327,12 @@ messageContentDecoder =
 
 messageHelperDecoder : Decoder ChatMessage
 messageHelperDecoder =
-        Decode.map4 ChatMessage
+        Decode.map5 ChatMessage
                 (Decode.field "author" Decode.string)
                 (Decode.field "content" Decode.string)
                 (Decode.field "verified" Decode.bool)
                 (Decode.field "fingerprint" Decode.string)
+                (Decode.field "timestamp" (Decode.map Time.millisToPosix Decode.int))
 
 historyDecoder : Decoder History
 historyDecoder =

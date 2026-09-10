@@ -250,3 +250,11 @@ button:active {
 	border: none;
 	color: #aaa;
 }
+
+button.remove {
+	background: none;
+	border: none;
+	margin: 0;
+	padding: 0 4px;
+	color: #aaa;
+}

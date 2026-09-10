@@ -83,6 +83,10 @@
 	    saveChannel(channelName);
     });
 
+    app.ports.removeChannel.subscribe(function(channelName) {
+	    removeChannel(channelName);
+    });
+
     function openIndexedDB() {
 	if (db) return Promise.resolve(db);
 
@@ -231,6 +235,12 @@
 		    request.onsuccess = () => resolve(request.result.map(r => r.name));
 		    request.onerror = (event) => reject(event.target.error);
 	    });
+    }
+
+    async function removeChannel(channel) {
+	    const db = await openIndexedDB();
+	    const tx = db.transaction('channels', 'readwrite');
+	    tx.objectStore("channels").delete(channel);
     }
 })();
   </script>

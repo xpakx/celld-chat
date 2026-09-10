@@ -14,6 +14,7 @@ port sendMessage : String -> Cmd msg
 port changeUsername : String -> Cmd msg
 port switchChannel : String -> Cmd msg
 port newChannel : String -> Cmd msg
+port removeChannel : String -> Cmd msg
 
 port getMessage : (String -> msg) -> Sub msg
 port changeStatus : (String -> msg) -> Sub msg
@@ -62,6 +63,7 @@ type Msg
     | ShowNewChannel
     | NewChannelBlurred String
     | FocusResult (Result Dom.Error ())
+    | RemoveChannel String
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -131,7 +133,11 @@ viewChannel current name =
         ] [
                 div [ class "channel-name" ] [
                         span [ class "level open" ] [],
-                        text name
+                        text name,
+                        if name /= "Global" then
+                                button [ class "remove", onClick (RemoveChannel name) ] [ text "[x]"]
+                        else
+                                text ""
                 ]
         ]
 
@@ -283,6 +289,8 @@ update msg model =
                                 )
                 FocusResult result ->
                         ( model, Cmd.none )
+                RemoveChannel name ->
+                        ( { model | channels = List.filter (\item -> item /= name) model.channels }, removeChannel name )
 
 initialModel : Model
 initialModel = {

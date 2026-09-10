@@ -240,8 +240,19 @@ button:active {
 	overflow-wrap: anywhere;
 }
 
+.msg-data {
+	display: flex;
+	flex-direction: row;
+	align-items: end;
+	gap: 5px;
+}
 
-.message.system .msg-author {
+.msg-date {
+	color: #aaa;
+	font-size: 11px;
+}
+
+.message.system .msg-data {
 	display: none;
 }
 

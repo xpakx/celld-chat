@@ -8,7 +8,7 @@ import Json.Decode as Decode exposing (Decoder, Value)
 import Json.Encode as Encode
 import Browser.Dom as Dom
 import Task
-import Time exposing (Posix)
+import Time exposing (Posix, Zone)
 
 
 port sendMessage : String -> Cmd msg
@@ -29,7 +29,8 @@ type alias Model = {
         fingerprint : String,
         channels : List String,
         currentChannel : String,
-        showNewChannel : Bool
+        showNewChannel : Bool,
+        zone : Zone
         }
 
 type alias ChatMessage = {
@@ -147,7 +148,7 @@ viewChat : Model -> Html Msg
 viewChat model =
     main_ [ class "chat" ] [ 
             viewHeader model.statusClass model.status model.currentChannel,
-            viewMessages model.fingerprint model.msgs,
+            viewMessages model.fingerprint model.zone model.msgs,
             viewControls model.inputMsg
         ]
 
@@ -158,13 +159,13 @@ viewHeader statusClass status currentChannel =
                 div [class statusClass] [text status]
         ] 
 
-viewMessages : String -> List ChatMessage -> Html Msg
-viewMessages userFingerprint msgs =
+viewMessages : String -> Zone -> List ChatMessage -> Html Msg
+viewMessages userFingerprint zone msgs =
         section [ class "messages", id "log" ]  
-                (List.map (viewMessage userFingerprint) msgs)
+                (List.map (viewMessage userFingerprint zone) msgs)
 
-viewMessage : String -> ChatMessage -> Html Msg
-viewMessage userFingerprint msg =
+viewMessage : String -> Zone -> ChatMessage -> Html Msg
+viewMessage userFingerprint zone msg =
         Html.div [
                 classList 
                 [
@@ -173,9 +174,20 @@ viewMessage userFingerprint msg =
                         ("system", msg.fingerprint == "system")
                 ] 
         ] [ 
-                div [ class "msg-author" ] [ text msg.author ],
+                div [ class "msg-data" ] [
+                        div [ class "msg-author" ] [ text msg.author ],
+                        div [ class "msg-date" ] [ text (formatDate zone msg.timestamp) ]
+                ],
                 div [ class "msg-content" ] [ text msg.content ]
         ]
+
+formatDate : Zone -> Posix -> String
+formatDate zone posix =
+        let
+                hour = Time.toHour zone posix |> String.fromInt |> String.padLeft 2 '0'
+                minute = Time.toMinute zone posix |> String.fromInt |> String.padLeft 2 '0'
+        in
+                hour ++ ":" ++ minute
        
 viewControls : String -> Html Msg
 viewControls inputMsg =
@@ -261,7 +273,7 @@ update msg model =
                         )
                 SystemMessage result ->
                         ( 
-                        { model | msgs = model.msgs ++ [ { author = "System", content = result, verified = True, fingerprint = "system", timestamp = Time.millisToPosix 0 } ] }, 
+                        { model | msgs = model.msgs ++ [ { author = "System", content = result, verified = True, fingerprint = "system", timestamp = Time.millisToPosix -1 } ] }, 
                         scrollChat
                         )
                 SwitchChannel name ->
@@ -304,11 +316,23 @@ initialModel = {
         fingerprint = "",
         channels = [],
         currentChannel = "Global",
-        showNewChannel = False
+        showNewChannel = False,
+        zone = Time.utc
         }
 
-init: List String -> (Model, Cmd Msg)
-init  channels = ( {initialModel | channels = channels}, Cmd.none )
+type alias Flags =
+    { 
+            channels : List String,
+            timezoneOffset : Int
+    }
+
+init: Flags -> (Model, Cmd Msg)
+init  flags = 
+        let 
+                zone = Time.customZone flags.timezoneOffset []
+        in
+                ( {initialModel | channels = flags.channels, zone = zone}, Cmd.none )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =

@@ -18,10 +18,14 @@
 (async () => {
     let db = null;
     const channels = await getChannelNames();
+    const timezoneOffset = -new Date().getTimezoneOffset();
 
     var app = Elm.Main.init({
       node: document.getElementById('app'),
-      flags: channels
+      flags: {
+	      channels: channels,
+	      timezoneOffset: timezoneOffset,
+      }
     });
 
     const identity = await getIdentity();
@@ -174,7 +178,6 @@
 
 	    const payload = JSON.stringify(regReq);
 	    ws.send(payload);
-	    // TODO: read them on the backend
     }
 
     async function broadcastMsg(ws, msg, identity) {

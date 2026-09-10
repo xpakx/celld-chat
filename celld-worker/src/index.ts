@@ -96,14 +96,27 @@ export class ChatRoom extends DurableObject {
 		ws.close(code, reason);
 	}
 
+	verifyTime(message: MessageReq): boolean {
+		const currentTime = Date.now();
+		const messageTime = new Date(message.timestamp).getTime();
+		const maxTimeDeltaMs = 5000;
+		return !(isNaN(messageTime) || Math.abs(currentTime - messageTime) > maxTimeDeltaMs);
+	}
+
 	async processMsg(ws: WebSocket, data: Attachments, message: MessageReq) {
+		const correctTime = this.verifyTime(message);
+		if (!correctTime) {
+			ws.send(JSON.stringify({ type: "error", message: "Timestamp expired or invalid" }));
+			return;
+		}
+
 		const verified = await this.verifyMessage(message, data);
 		const fingerprint = verified ? data.fingerprint : undefined;
 		this.ctx.storage.sql.exec(
 			"INSERT INTO messages (content, author, timestamp, verified, fingerprint) VALUES (?, ?, ?, ?, ?)",
 			message.msg,
 			data.name,
-			new Date().toISOString(),
+			new Date(message.timestamp).toISOString(),
 			verified,
 			fingerprint
 		);

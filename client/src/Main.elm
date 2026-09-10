@@ -268,12 +268,12 @@ update msg model =
                                         model | showNewChannel = False,
                                         msgs = [],
                                         currentChannel = name,
-                                        channels = if List.member name model.channels then 
+                                        channels = if List.member name model.channels || name == "Global" then 
                                                 model.channels
                                         else
                                                 model.channels ++ [ name ]
                                 }, 
-                                if List.member name model.channels then
+                                if List.member name model.channels || name == "Global" then
                                         switchChannel name
                                 else
                                         newChannel name 

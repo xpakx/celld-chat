@@ -59,6 +59,12 @@ type alias Friend = {
         fingerprint : String
         }
 
+findFriend : String -> List Friend -> Maybe Friend
+findFriend targetFingerprint friends =
+        friends
+        |> List.filter (\friend -> friend.fingerprint == targetFingerprint)
+        |> List.head
+
 type Msg
     = OnClick
     | OnInput String
@@ -180,7 +186,7 @@ viewChat : Model -> Html Msg
 viewChat model =
     main_ [ class "chat" ] [ 
             viewHeader model.statusClass model.status model.currentChannel,
-            viewMessages model.fingerprint model.zone model.msgs,
+            viewMessages model.fingerprint model.zone model.friends model.msgs,
             viewControls model.inputMsg
         ]
 
@@ -191,15 +197,16 @@ viewHeader statusClass status currentChannel =
                 div [class statusClass] [text status]
         ] 
 
-viewMessages : String -> Zone -> List ChatMessage -> Html Msg
-viewMessages userFingerprint zone msgs =
+viewMessages : String -> Zone -> List Friend -> List ChatMessage -> Html Msg
+viewMessages userFingerprint zone friends msgs =
         section [ class "messages", id "log" ]  
-                (List.map (viewMessage userFingerprint zone) msgs)
+                (List.map (viewMessage userFingerprint zone friends) msgs)
 
-viewMessage : String -> Zone -> ChatMessage -> Html Msg
-viewMessage userFingerprint zone msg =
+viewMessage : String -> Zone -> List Friend -> ChatMessage -> Html Msg
+viewMessage userFingerprint zone friends msg =
         let 
             authored = msg.fingerprint == userFingerprint
+            friend = findFriend msg.fingerprint friends
         in
                 Html.div [
                         classList 
@@ -210,7 +217,23 @@ viewMessage userFingerprint zone msg =
                         ] 
                 ] [ 
                         div [ class "msg-data" ] [
-                                div [ class "msg-author" ] [ text msg.author ],
+                                case friend of
+                                        Just _ ->
+                                                div [ class "friend-badge" ] []
+                                        Nothing ->
+                                                text ""
+                                ,
+                                div [ class "msg-author" ] [
+                                        case friend of
+                                                Just f ->
+                                                        case f.localName of
+                                                                Just name ->
+                                                                        text name
+                                                                Nothing ->
+                                                                        text msg.author
+                                                Nothing ->
+                                                    text msg.author
+                                ],
                                 div [ class "msg-date" ] [ text (formatDate zone msg.timestamp) ]
                         ],
                         viewMsgContent msg.content

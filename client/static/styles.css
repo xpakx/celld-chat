@@ -243,13 +243,14 @@ button:active {
 .msg-data {
 	display: flex;
 	flex-direction: row;
-	align-items: end;
+	align-items: center;
 	gap: 5px;
 }
 
 .msg-date {
 	color: #aaa;
 	font-size: 11px;
+	height: 100%;
 }
 
 .message.system .msg-data {
@@ -281,4 +282,13 @@ button.remove {
 
 .channel-btn-container {
 	display: flex;
+}
+
+
+.friend-badge {
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background-color: #e8a84e;
 }

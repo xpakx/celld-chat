@@ -84,6 +84,21 @@ onEnter msg =
     preventDefaultOn "keydown" (keyDecoder 
     |> Decode.andThen checkEnter)
 
+onEnterChannel : (String -> Msg) -> Attribute Msg
+onEnterChannel msg =
+    let
+        keyDecoder = Decode.map2 Tuple.pair
+                (Decode.field "key" Decode.string)
+                (Decode.at ["target", "textContent"] Decode.string)
+        checkEnter (key, textContent) =
+            if key == "Enter" then
+                Decode.succeed (msg textContent)
+            else
+                Decode.fail "not enter"
+    in
+    on "keydown" (keyDecoder 
+    |> Decode.andThen checkEnter)
+
 view : Model -> Html Msg
 view model =
     div [ class "app-mount" ] [
@@ -110,6 +125,7 @@ viewSidebar model =
                                             class "channel new-channel",
                                             id "new-channel-input",
                                             onBlurWithContent NewChannelBlurred,
+                                            onEnterChannel NewChannelBlurred,
                                             attribute "contenteditable" "true"
                                     ] [text ""]
                             else

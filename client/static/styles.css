@@ -266,6 +266,19 @@ button.remove {
 	background: none;
 	border: none;
 	margin: 0;
-	padding: 0 4px;
 	color: #aaa;
+}
+
+.channel-controls {
+	display: none;
+	justify-content: center;
+	gap: 4px;
+}
+
+.channel-btn-container:hover .channel-controls {
+	display: flex;
+}
+
+.channel-btn-container {
+	display: flex;
 }

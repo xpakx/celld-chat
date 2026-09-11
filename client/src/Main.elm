@@ -126,17 +126,21 @@ viewSidebar model =
 
 viewChannel : String -> String -> Html Msg
 viewChannel current name = 
-        button [ 
-                classList 
-                [
-                        ("channel", True), 
-                        ("current-channel", current == name)
+        div [class "channel-btn-container"] [
+                button [ 
+                        classList 
+                        [
+                                ("channel", True), 
+                                ("current-channel", current == name)
+                        ],
+                        onClick (SwitchChannel name)
+                ] [
+                        div [ class "channel-name" ] [
+                                span [ class "level open" ] [],
+                                text name
+                        ]
                 ],
-                onClick (SwitchChannel name)
-        ] [
-                div [ class "channel-name" ] [
-                        span [ class "level open" ] [],
-                        text name,
+                div [ class "channel-controls" ] [
                         if name /= "Global" then
                                 button [ class "remove", onClick (RemoveChannel name) ] [ text "[x]"]
                         else

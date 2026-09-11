@@ -32,7 +32,8 @@ type alias Model = {
         channels : List String,
         currentChannel : String,
         showNewChannel : Bool,
-        zone : Zone
+        zone : Zone,
+        friends : List Friend
         }
 
 type alias ChatMessage = {
@@ -50,6 +51,11 @@ type alias History = {
 
 type alias RegisterAckMsg = {
         name : String,
+        fingerprint : String
+        }
+
+type alias Friend = {
+        localName : Maybe String,
         fingerprint : String
         }
 
@@ -135,6 +141,10 @@ viewSidebar model =
                     ]
 
             ),
+            div [ class "sidebar-label" ] [ text "Friends" ],
+            div [ class "channels" ] (
+                    List.map viewFriend model.friends
+            ),
             div [ 
                     class "profile",
                     onBlurWithContent UsernameBlurred,
@@ -188,20 +198,23 @@ viewMessages userFingerprint zone msgs =
 
 viewMessage : String -> Zone -> ChatMessage -> Html Msg
 viewMessage userFingerprint zone msg =
-        Html.div [
-                classList 
-                [
-                        ("message", True), 
-                        ("authored", msg.fingerprint == userFingerprint),
-                        ("system", msg.fingerprint == "system")
-                ] 
-        ] [ 
-                div [ class "msg-data" ] [
-                        div [ class "msg-author" ] [ text msg.author ],
-                        div [ class "msg-date" ] [ text (formatDate zone msg.timestamp) ]
-                ],
-                viewMsgContent msg.content
-        ]
+        let 
+            authored = msg.fingerprint == userFingerprint
+        in
+                Html.div [
+                        classList 
+                        [
+                                ("message", True), 
+                                ("authored", authored),
+                                ("system", msg.fingerprint == "system")
+                        ] 
+                ] [ 
+                        div [ class "msg-data" ] [
+                                div [ class "msg-author" ] [ text msg.author ],
+                                div [ class "msg-date" ] [ text (formatDate zone msg.timestamp) ]
+                        ],
+                        viewMsgContent msg.content
+                ]
 
 formatDate : Zone -> Posix -> String
 formatDate zone posix =
@@ -219,6 +232,18 @@ viewControls inputMsg =
                 value inputMsg,
                 onInput OnInput ] [],
                 button [ onClick OnClick] [ text "Send" ]
+        ]
+
+viewFriend : Friend -> Html Msg
+viewFriend friend =
+        div [class "friend"] [
+                case friend.localName of
+                        Just name ->
+                            text name
+                        Nothing ->
+                            text "unknown"
+                ,
+                div [] [ text ("(" ++ friend.fingerprint ++ ")") ]
         ]
 
 onBlurWithContent : (String -> msg) -> Attribute msg
@@ -358,13 +383,15 @@ initialModel = {
         channels = [],
         currentChannel = "Global",
         showNewChannel = False,
-        zone = Time.utc
+        zone = Time.utc,
+        friends = []
         }
 
 type alias Flags =
     { 
             channels : List String,
-            timezoneOffset : Int
+            timezoneOffset : Int,
+            friends : List Friend
     }
 
 init: Flags -> (Model, Cmd Msg)
@@ -372,7 +399,7 @@ init  flags =
         let 
                 zone = Time.customZone flags.timezoneOffset []
         in
-                ( {initialModel | channels = flags.channels, zone = zone}, Cmd.none )
+                ( {initialModel | channels = flags.channels, zone = zone, friends = flags.friends}, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg

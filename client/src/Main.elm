@@ -9,6 +9,8 @@ import Json.Encode as Encode
 import Browser.Dom as Dom
 import Task
 import Time exposing (Posix, Zone)
+import Markdown.Parser
+import Markdown.Renderer
 
 
 port sendMessage : String -> Cmd msg
@@ -198,7 +200,7 @@ viewMessage userFingerprint zone msg =
                         div [ class "msg-author" ] [ text msg.author ],
                         div [ class "msg-date" ] [ text (formatDate zone msg.timestamp) ]
                 ],
-                div [ class "msg-content" ] [ text msg.content ]
+                viewMsgContent msg.content
         ]
 
 formatDate : Zone -> Posix -> String
@@ -223,6 +225,25 @@ onBlurWithContent : (String -> msg) -> Attribute msg
 onBlurWithContent toMsg =
         on "blur"
                 (Decode.map toMsg (Decode.at ["target", "textContent"] Decode.string))
+
+viewMsgContent : String -> Html msg
+viewMsgContent markdownInput =
+        let
+            renderedHtml =
+                    markdownInput
+                    |> Markdown.Parser.parse
+                    |> Result.mapError (\errors -> 
+                            errors 
+                            |> List.map Markdown.Parser.deadEndToString 
+                            |> String.join "\n"
+                    )
+                    |> Result.andThen (Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer)
+        in
+        case renderedHtml of
+                Ok elements ->
+                        div [class "msg-content"] elements
+                Err _ ->
+                        div [class "msg-content"] [text ""]
 
 
 scrollChat : Cmd Msg

@@ -19,6 +19,7 @@ port switchChannel : String -> Cmd msg
 port newChannel : String -> Cmd msg
 port removeChannel : String -> Cmd msg
 port deleteMessage : Int -> Cmd msg
+port removeFriend : String -> Cmd msg
 
 port getMessage : (String -> msg) -> Sub msg
 port changeStatus : (String -> msg) -> Sub msg
@@ -85,6 +86,7 @@ type Msg
     | RemoveChannel String
     | OnMsgClick Int
     | MessageDeleted Int
+    | RemoveFriend String
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -151,10 +153,14 @@ viewSidebar model =
                     ]
 
             ),
-            div [ class "sidebar-label" ] [ text "Friends" ],
-            div [ class "channels" ] (
-                    List.map viewFriend model.friends
-            ),
+            if List.isEmpty model.friends then
+                    text ""
+            else
+                    div [ class "sidebar-label" ] [ text "Friends" ],
+                    div [ class "channels" ] (
+                            List.map viewFriend model.friends
+                    )
+            ,
             div [ 
                     class "profile",
                     onBlurWithContent UsernameBlurred,
@@ -271,7 +277,8 @@ viewFriend friend =
                         Nothing ->
                             text "unknown"
                 ,
-                div [] [ text ("(" ++ friend.fingerprint ++ ")") ]
+                div [] [ text ("(" ++ friend.fingerprint ++ ")") ],
+                button [onClick (RemoveFriend friend.fingerprint)] [text "del"]
         ]
 
 onBlurWithContent : (String -> msg) -> Attribute msg
@@ -403,6 +410,8 @@ update msg model =
                         ( model, deleteMessage id )
                 MessageDeleted id ->
                         ( { model | msgs = List.filter (\item -> item.id /= id) model.msgs }, Cmd.none )
+                RemoveFriend fingerprint ->
+                        ( { model | friends = List.filter (\item -> item.fingerprint /= fingerprint) model.friends }, removeFriend fingerprint )
 
 initialModel : Model
 initialModel = {

@@ -95,10 +95,14 @@
     });
 
     app.ports.deleteMessage.subscribe(function(messageId) {
-	    console.log(messageId);
 	    if (ws.readyState == WebSocket.OPEN) {
 		broadcastDeletion(ws, messageId, identity);
 	    }
+    });
+
+    app.ports.removeFriend.subscribe(function(friendFingerprint) {
+	    // TODO
+	    console.log(friendFingerprint);
     });
 
     function openIndexedDB() {

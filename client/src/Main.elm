@@ -18,6 +18,7 @@ port changeUsername : String -> Cmd msg
 port switchChannel : String -> Cmd msg
 port newChannel : String -> Cmd msg
 port removeChannel : String -> Cmd msg
+port deleteMessage : Int -> Cmd msg
 
 port getMessage : (String -> msg) -> Sub msg
 port changeStatus : (String -> msg) -> Sub msg
@@ -41,7 +42,8 @@ type alias ChatMessage = {
         content : String,
         verified : Bool,
         fingerprint : String,
-        timestamp: Posix
+        timestamp: Posix,
+        id: Int
         }
 
 type alias History = {
@@ -81,6 +83,7 @@ type Msg
     | NewChannelBlurred String
     | FocusResult (Result Dom.Error ())
     | RemoveChannel String
+    | OnMsgClick Int
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -214,7 +217,8 @@ viewMessage userFingerprint zone friends msg =
                                 ("message", True), 
                                 ("authored", authored),
                                 ("system", msg.fingerprint == "system")
-                        ] 
+                        ],
+                        onClick (OnMsgClick msg.id)
                 ] [ 
                         div [ class "msg-data" ] [
                                 case friend of
@@ -328,7 +332,7 @@ update msg model =
                         )
                 AckReceived newMsg ->
                         ( 
-                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg, verified = True, fingerprint = model.fingerprint, timestamp = Time.millisToPosix 0 } ] }, 
+                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg, verified = True, fingerprint = model.fingerprint, timestamp = Time.millisToPosix 0, id = 0} ] }, 
                         scrollChat
                         )
                 HistoryUpdate history ->
@@ -362,7 +366,7 @@ update msg model =
                         )
                 SystemMessage result ->
                         ( 
-                        { model | msgs = model.msgs ++ [ { author = "System", content = result, verified = True, fingerprint = "system", timestamp = Time.millisToPosix -1 } ] }, 
+                        { model | msgs = model.msgs ++ [ { author = "System", content = result, verified = True, fingerprint = "system", timestamp = Time.millisToPosix -1, id = 0 } ] }, 
                         scrollChat
                         )
                 SwitchChannel name ->
@@ -394,6 +398,8 @@ update msg model =
                         ( model, Cmd.none )
                 RemoveChannel name ->
                         ( { model | channels = List.filter (\item -> item /= name) model.channels }, removeChannel name )
+                OnMsgClick id ->
+                                ( model, deleteMessage id )
 
 initialModel : Model
 initialModel = {
@@ -442,12 +448,13 @@ messageContentDecoder =
 
 messageHelperDecoder : Decoder ChatMessage
 messageHelperDecoder =
-        Decode.map5 ChatMessage
+        Decode.map6 ChatMessage
                 (Decode.field "author" Decode.string)
                 (Decode.field "content" Decode.string)
                 (Decode.field "verified" Decode.bool)
                 (Decode.field "fingerprint" Decode.string)
                 (Decode.field "timestamp" (Decode.map Time.millisToPosix Decode.int))
+                (Decode.field "id" Decode.int)
 
 historyDecoder : Decoder History
 historyDecoder =

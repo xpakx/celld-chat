@@ -292,3 +292,7 @@ button.remove {
 	border-radius: 50%;
 	background-color: #e8a84e;
 }
+
+.msg-content p {
+	margin: 0;
+}

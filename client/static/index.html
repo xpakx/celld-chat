@@ -94,6 +94,13 @@
 	    removeChannel(channelName);
     });
 
+    app.ports.deleteMessage.subscribe(function(messageId) {
+	    console.log(messageId);
+	    if (ws.readyState == WebSocket.OPEN) {
+		broadcastDeletion(ws, messageId, identity);
+	    }
+    });
+
     function openIndexedDB() {
 	if (db) return Promise.resolve(db);
 
@@ -201,6 +208,32 @@
 		    signature: sig,
 	    };
 	    const finPayload = JSON.stringify(msgReq);
+	    ws.send(finPayload);
+    }
+
+    async function broadcastDeletion(ws, msgId, identity) {
+	    const timestamp = Date.now();
+	    const payload = JSON.stringify({
+		    msg: msgId,
+		    timestamp: timestamp ,
+		    action: "DELETE",
+	    });
+	    const signatureBuffer = await window.crypto.subtle.sign(
+		    { name: "ECDSA", hash: { name: "SHA-256" } },
+		    identity.keyPair.privateKey,
+		    new TextEncoder().encode(payload)
+	    );
+	    const sig = btoa(String.fromCharCode(
+		    ...new Uint8Array(signatureBuffer))
+	    );
+	    let msgReq = {
+		    type: 'delete',
+		    id: msgId,
+		    timestamp: timestamp,
+		    signature: sig,
+	    };
+	    const finPayload = JSON.stringify(msgReq);
+	    console.log(finPayload);
 	    ws.send(finPayload);
     }
 

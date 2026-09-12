@@ -84,6 +84,7 @@ type Msg
     | FocusResult (Result Dom.Error ())
     | RemoveChannel String
     | OnMsgClick Int
+    | MessageDeleted Int
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -399,7 +400,9 @@ update msg model =
                 RemoveChannel name ->
                         ( { model | channels = List.filter (\item -> item /= name) model.channels }, removeChannel name )
                 OnMsgClick id ->
-                                ( model, deleteMessage id )
+                        ( model, deleteMessage id )
+                MessageDeleted id ->
+                        ( { model | msgs = List.filter (\item -> item.id /= id) model.msgs }, Cmd.none )
 
 initialModel : Model
 initialModel = {
@@ -472,6 +475,10 @@ registerAckDecoder =
                 (Decode.field "author" Decode.string)
                 (Decode.field "fingerprint" Decode.string)
 
+messageDeletionDecoder : Decoder Int
+messageDeletionDecoder =
+        Decode.field "id" Decode.int
+
 routeByMessageType : String -> String -> Msg
 routeByMessageType msgType rawJson =
         case msgType of
@@ -486,6 +493,9 @@ routeByMessageType msgType rawJson =
                         Err _ -> SystemMessage "error" 
                 "register_ack" -> case Decode.decodeString registerAckDecoder rawJson of
                         Ok content -> RegisterAck content
+                        Err _ -> SystemMessage "error" 
+                "deleted" -> case Decode.decodeString messageDeletionDecoder rawJson of
+                        Ok id -> MessageDeleted id
                         Err _ -> SystemMessage "error" 
                 _ -> SystemMessage "error" 
 

@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import strict from "node:assert/strict";
 import { time } from "node:console";
 
 export interface Env {
@@ -92,6 +93,8 @@ export class ChatRoom extends DurableObject {
 			await this.register(ws, author, data);
 		} else if (data.type == "message") {
 			await this.processMsg(ws, attachment ?? {name: author}, data);
+		} else if (data.type == "delete") {
+			await this.deleteMsg(ws, attachment ?? {name: author}, data);
 		}
 	}
 
@@ -99,15 +102,15 @@ export class ChatRoom extends DurableObject {
 		ws.close(code, reason);
 	}
 
-	verifyTime(message: MessageReq): boolean {
+	verifyTime(timestamp: number): boolean {
 		const currentTime = Date.now();
-		const messageTime = new Date(message.timestamp).getTime();
+		const messageTime = new Date(timestamp).getTime();
 		const maxTimeDeltaMs = 5000;
 		return !(isNaN(messageTime) || Math.abs(currentTime - messageTime) > maxTimeDeltaMs);
 	}
 
 	async processMsg(ws: WebSocket, data: Attachments, message: MessageReq) {
-		const correctTime = this.verifyTime(message);
+		const correctTime = this.verifyTime(message.timestamp);
 		if (!correctTime) {
 			ws.send(JSON.stringify({ type: "error", message: "Timestamp expired or invalid" }));
 			return;
@@ -221,13 +224,97 @@ export class ChatRoom extends DurableObject {
 		);
 		return isValid;
 	}
+
+	async deleteMsg(ws: WebSocket, data: Attachments, message: DeleteReq) {
+		const correctTime = this.verifyTime(message.timestamp);
+		if (!correctTime) {
+			ws.send(JSON.stringify({ type: "error", message: "Timestamp expired or invalid" }));
+			return;
+		}
+		if (!data.fingerprint) {
+			ws.send(JSON.stringify({ type: "error", message: "Non-verified user" }));
+			return;
+		}
+		const rows = this.ctx.storage.sql.exec(
+			"SELECT fingerprint FROM messages WHERE id = ?",
+				message.id
+		).toArray();
+		const found = rows[0];
+		if (!found) {
+			ws.send(JSON.stringify({ type: "error", message: "No such message" }));
+			return;
+		}
+		const msgFingerprint = found.fingerprint;
+		if (!msgFingerprint) {
+			ws.send(JSON.stringify({ type: "error", message: "Wrong user" }));
+			return;
+		}
+
+		const verified = await this.verifyDeletion(message, data, msgFingerprint as string);
+		if (!verified) {
+			ws.send(JSON.stringify({ type: "error", message: "Wrong user" }));
+			return;
+		}
+
+		this.ctx.storage.sql.exec(
+			"DELETE FROM messages WHERE id = ?",
+				message.id
+		);
+
+		const resp = JSON.stringify({ type: "deleted", id: message.id });
+
+		const sockets = this.ctx.getWebSockets();
+		for (const socket of sockets) {
+			socket.send(resp);
+		}
+	}
+
+	async verifyDeletion(msg: DeleteReq, data: Attachments, fingerprint: string): Promise<boolean> {
+		if (!data.pubJwk || !data.fingerprint) return false;
+		if (data.fingerprint != fingerprint) return false;
+
+		const pubJwk = JSON.parse(data.pubJwk);
+		const cryptoKey = await crypto.subtle.importKey(
+			"jwk",
+			pubJwk,
+			{ name: "ECDSA", namedCurve: "P-256" },
+			false,
+			["verify"]
+		);
+
+		const encoder = new TextEncoder();
+		const dataToVerify = encoder.encode(JSON.stringify({
+			msg: msg.id,
+			timestamp: msg.timestamp,
+			action: "DELETE",
+		}));
+		const signatureBytes = Uint8Array.from(
+			atob(msg.signature),
+			c => c.charCodeAt(0)
+		);
+
+		const isValid = await crypto.subtle.verify(
+			{ name: "ECDSA", hash: "SHA-256" },
+			cryptoKey,
+			signatureBytes,
+			dataToVerify
+		);
+		return isValid;
+	}
 }
 
 interface MessageReq {
 	type: "message",
 	signature: string,
 	msg: string,
-	timestamp: string,
+	timestamp: number,
+}
+
+interface DeleteReq {
+	type: "delete",
+	signature: string,
+	timestamp: number,
+	id: number,
 }
 
 interface RegisterReq {

@@ -95,6 +95,8 @@ export class ChatRoom extends DurableObject {
 			await this.processMsg(ws, attachment ?? {name: author}, data);
 		} else if (data.type == "delete") {
 			await this.deleteMsg(ws, attachment ?? {name: author}, data);
+		} else if (data.type == "edit") {
+			await this.editMsg(ws, attachment ?? {name: author}, data);
 		}
 	}
 
@@ -301,6 +303,85 @@ export class ChatRoom extends DurableObject {
 		);
 		return isValid;
 	}
+
+	async editMsg(ws: WebSocket, data: Attachments, message: EditReq) {
+		const correctTime = this.verifyTime(message.timestamp);
+		if (!correctTime) {
+			ws.send(JSON.stringify({ type: "error", message: "Timestamp expired or invalid" }));
+			return;
+		}
+		if (!data.fingerprint) {
+			ws.send(JSON.stringify({ type: "error", message: "Non-verified user" }));
+			return;
+		}
+		const rows = this.ctx.storage.sql.exec(
+			"SELECT fingerprint FROM messages WHERE id = ?",
+			message.id
+		).toArray();
+		const found = rows[0];
+		if (!found) {
+			ws.send(JSON.stringify({ type: "error", message: "No such message" }));
+			return;
+		}
+		const msgFingerprint = found.fingerprint;
+		if (!msgFingerprint) {
+			ws.send(JSON.stringify({ type: "error", message: "Wrong user" }));
+			return;
+		}
+
+		const verified = await this.verifyEdit(message, data, msgFingerprint as string);
+		if (!verified) {
+			ws.send(JSON.stringify({ type: "error", message: "Wrong user" }));
+			return;
+		}
+
+		this.ctx.storage.sql.exec(
+			"UPDATE messages SET content = ? WHERE id = ?",
+			message.newMsg,
+			message.id
+		);
+
+		const resp = JSON.stringify({ type: "edited", id: message.id, content: message.newMsg });
+
+		const sockets = this.ctx.getWebSockets();
+		for (const socket of sockets) {
+			socket.send(resp);
+		}
+	}
+
+	async verifyEdit(msg: EditReq, data: Attachments, fingerprint: string): Promise<boolean> {
+		if (!data.pubJwk || !data.fingerprint) return false;
+		if (data.fingerprint != fingerprint) return false;
+
+		const pubJwk = JSON.parse(data.pubJwk);
+		const cryptoKey = await crypto.subtle.importKey(
+			"jwk",
+			pubJwk,
+			{ name: "ECDSA", namedCurve: "P-256" },
+			false,
+			["verify"]
+		);
+
+		const encoder = new TextEncoder();
+		const dataToVerify = encoder.encode(JSON.stringify({
+			msg: msg.id,
+			timestamp: msg.timestamp,
+			content: msg.newMsg,
+			action: "EDIT",
+		}));
+		const signatureBytes = Uint8Array.from(
+			atob(msg.signature),
+			c => c.charCodeAt(0)
+		);
+
+		const isValid = await crypto.subtle.verify(
+			{ name: "ECDSA", hash: "SHA-256" },
+			cryptoKey,
+			signatureBytes,
+			dataToVerify
+		);
+		return isValid;
+	}
 }
 
 interface MessageReq {
@@ -315,6 +396,14 @@ interface DeleteReq {
 	signature: string,
 	timestamp: number,
 	id: number,
+}
+
+interface EditReq {
+	type: "edit",
+	signature: string,
+	timestamp: number,
+	id: number,
+	newMsg: string,
 }
 
 interface RegisterReq {

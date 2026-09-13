@@ -1,6 +1,4 @@
 import { DurableObject } from "cloudflare:workers";
-import strict from "node:assert/strict";
-import { time } from "node:console";
 
 export interface Env {
 	CHAT_ROOM: DurableObjectNamespace;
@@ -8,12 +6,12 @@ export interface Env {
 
 export default {
 	async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
-		const url = new URL(request.url);
+		const requestUrl = new URL(request.url);
 
-		if (url.pathname === "/ws") {
-			const roomName = url.searchParams.get("room") || "global-chat";
-			const id = env.CHAT_ROOM.idFromName(roomName);
-			const stub = env.CHAT_ROOM.get(id);
+		if (requestUrl.pathname === "/ws") {
+			const roomName = requestUrl.searchParams.get("room") || "global-chat";
+			const roomId = env.CHAT_ROOM.idFromName(roomName);
+			const stub = env.CHAT_ROOM.get(roomId);
 			return stub.fetch(request);
 		}
 		return new Response("Not found", { status: 404 });
@@ -44,7 +42,7 @@ export class ChatRoom extends DurableObject {
 			return new Response("Expected Upgrade: websocket", { status: 426 });
 		}
 
-		const header = request.headers.get("Sec-WebSocket-Protocol");
+		const subprotocolHeader = request.headers.get("Sec-WebSocket-Protocol");
 
 
 		const pair = new WebSocketPair();
@@ -53,14 +51,14 @@ export class ChatRoom extends DurableObject {
 		this.ctx.acceptWebSocket(server);
 
 
-		const authorName = extractNameFromSubprotocols(header) ?? generateAnonymousName();
+		const authorName = extractNameFromSubprotocols(subprotocolHeader) ?? generateAnonymousName();
 
 		server.serializeAttachment({ name: authorName });
 
 		const cursor = this.ctx.storage.sql.exec(
 			"SELECT * FROM (SELECT * FROM messages ORDER BY id DESC LIMIT 30) ORDER BY id ASC"
 		);
-		const history = [...cursor].map((row: any) => { return {
+		const messageHistory = [...cursor].map((row: any) => { return {
 				id: row.id,
 				author: row.author,
 				content: row.content,
@@ -72,7 +70,7 @@ export class ChatRoom extends DurableObject {
 		server.send(
 			JSON.stringify({
 				type: "history",
-				messages: history,
+				messages: messageHistory,
 				name: authorName,
 			})
 		);
@@ -86,17 +84,18 @@ export class ChatRoom extends DurableObject {
 
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
 		const attachment = ws.deserializeAttachment() as Attachments | null;
-		const author = attachment?.name || "unknown";
-		const data = JSON.parse(message as string);
+		const currentUser = attachment?.name || "unknown";
+		const userNameData = attachment ?? {name: currentUser};
+		const request = JSON.parse(message as string);
 
-		if (data.type == "register") {
-			await this.register(ws, author, data);
-		} else if (data.type == "message") {
-			await this.processMsg(ws, attachment ?? {name: author}, data);
-		} else if (data.type == "delete") {
-			await this.deleteMsg(ws, attachment ?? {name: author}, data);
-		} else if (data.type == "edit") {
-			await this.editMsg(ws, attachment ?? {name: author}, data);
+		if (request.type == "register") {
+			await this.register(ws, currentUser, request);
+		} else if (request.type == "message") {
+			await this.processMsg(ws, userNameData, request);
+		} else if (request.type == "delete") {
+			await this.deleteMsg(ws, userNameData, request);
+		} else if (request.type == "edit") {
+			await this.editMsg(ws, userNameData, request);
 		}
 	}
 

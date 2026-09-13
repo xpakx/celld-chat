@@ -230,8 +230,7 @@ viewMessage userFingerprint zone friends msg =
                                 ("message", True), 
                                 ("authored", authored),
                                 ("system", msg.fingerprint == "system")
-                        ],
-                        onClick (OnMsgClick msg.id)
+                        ]
                 ] [ 
                         div [ class "msg-data" ] [
                                 case friend of
@@ -239,6 +238,11 @@ viewMessage userFingerprint zone friends msg =
                                                 div [ class "friend-badge" ] []
                                         Nothing ->
                                                 text ""
+                                ,
+                                if authored then
+                                        button [ class "inline-btn", onClick (OnMsgClick msg.id) ] [ text "x" ]
+                                else
+                                        text ""
                                 ,
                                 div [ class "msg-author" ] [
                                         case friend of
@@ -252,6 +256,7 @@ viewMessage userFingerprint zone friends msg =
                                                     text msg.author
                                 ],
                                 div [ class "msg-date" ] [ text (formatDate zone msg.timestamp) ]
+
                         ],
                         viewMsgContent msg.content
                 ]

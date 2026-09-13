@@ -296,3 +296,11 @@ button.remove {
 .msg-content p {
 	margin: 0;
 }
+
+button.inline-btn {
+	background: none;
+	border: none;
+	margin: 0;
+	padding: 0;
+	color: #aaa;
+}

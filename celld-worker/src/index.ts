@@ -195,10 +195,9 @@ export class ChatRoom extends DurableObject {
 		}));
 	}
 
-	async verifyMessage(msg: MessageReq, data: Attachments): Promise<boolean> {
-		if (!data.pubJwk || !data.fingerprint) return false;
+	async verifyPayload(dataToVerify: ArrayBuffer | Uint8Array<ArrayBufferLike>, pubJwkStr: string, signature: string): Promise<boolean> {
 		// TODO: we prolly shouldn't parse that on every msg
-		const pubJwk = JSON.parse(data.pubJwk);
+		const pubJwk = JSON.parse(pubJwkStr);
 		const cryptoKey = await crypto.subtle.importKey(
 			"jwk",
 			pubJwk,
@@ -207,13 +206,8 @@ export class ChatRoom extends DurableObject {
 			["verify"]
 		);
 
-		const encoder = new TextEncoder();
-		const dataToVerify = encoder.encode(JSON.stringify({
-			msg: msg.msg,
-			timestamp: msg.timestamp,
-		}));
 		const signatureBytes = Uint8Array.from(
-			atob(msg.signature),
+			atob(signature),
 			c => c.charCodeAt(0)
 		);
 
@@ -224,6 +218,16 @@ export class ChatRoom extends DurableObject {
 			dataToVerify
 		);
 		return isValid;
+	}
+
+	async verifyMessage(msg: MessageReq, data: Attachments): Promise<boolean> {
+		if (!data.pubJwk || !data.fingerprint) return false;
+		const encoder = new TextEncoder();
+		const dataToVerify = encoder.encode(JSON.stringify({
+			msg: msg.msg,
+			timestamp: msg.timestamp,
+		}));
+		return await this.verifyPayload(dataToVerify, data.pubJwk, msg.signature);
 	}
 
 	async deleteMsg(ws: WebSocket, data: Attachments, message: DeleteReq) {
@@ -274,33 +278,13 @@ export class ChatRoom extends DurableObject {
 		if (!data.pubJwk || !data.fingerprint) return false;
 		if (data.fingerprint != fingerprint) return false;
 
-		const pubJwk = JSON.parse(data.pubJwk);
-		const cryptoKey = await crypto.subtle.importKey(
-			"jwk",
-			pubJwk,
-			{ name: "ECDSA", namedCurve: "P-256" },
-			false,
-			["verify"]
-		);
-
 		const encoder = new TextEncoder();
 		const dataToVerify = encoder.encode(JSON.stringify({
 			msg: msg.id,
 			timestamp: msg.timestamp,
 			action: "DELETE",
 		}));
-		const signatureBytes = Uint8Array.from(
-			atob(msg.signature),
-			c => c.charCodeAt(0)
-		);
-
-		const isValid = await crypto.subtle.verify(
-			{ name: "ECDSA", hash: "SHA-256" },
-			cryptoKey,
-			signatureBytes,
-			dataToVerify
-		);
-		return isValid;
+		return await this.verifyPayload(dataToVerify, data.pubJwk, msg.signature);
 	}
 
 	async editMsg(ws: WebSocket, data: Attachments, message: EditReq) {
@@ -352,15 +336,6 @@ export class ChatRoom extends DurableObject {
 		if (!data.pubJwk || !data.fingerprint) return false;
 		if (data.fingerprint != fingerprint) return false;
 
-		const pubJwk = JSON.parse(data.pubJwk);
-		const cryptoKey = await crypto.subtle.importKey(
-			"jwk",
-			pubJwk,
-			{ name: "ECDSA", namedCurve: "P-256" },
-			false,
-			["verify"]
-		);
-
 		const encoder = new TextEncoder();
 		const dataToVerify = encoder.encode(JSON.stringify({
 			msg: msg.id,
@@ -368,18 +343,7 @@ export class ChatRoom extends DurableObject {
 			content: msg.newMsg,
 			action: "EDIT",
 		}));
-		const signatureBytes = Uint8Array.from(
-			atob(msg.signature),
-			c => c.charCodeAt(0)
-		);
-
-		const isValid = await crypto.subtle.verify(
-			{ name: "ECDSA", hash: "SHA-256" },
-			cryptoKey,
-			signatureBytes,
-			dataToVerify
-		);
-		return isValid;
+		return await this.verifyPayload(dataToVerify, data.pubJwk, msg.signature);
 	}
 }
 

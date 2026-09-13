@@ -46,6 +46,13 @@ type alias ChatMessage = {
         timestamp: Posix,
         id: Int
         }
+        
+type alias MessageAck = {
+        content : String,
+        verified : Bool,
+        timestamp: Posix,
+        id: Int
+        }
 
 type alias History = {
         messages : List ChatMessage,
@@ -77,7 +84,7 @@ type Msg
     = OnClick
     | OnInput String
     | MessageReceived ChatMessage
-    | AckReceived String
+    | AckReceived MessageAck
     | StatusChanged String
     | HistoryUpdate History
     | Scrolled (Result Dom.Error ())
@@ -351,7 +358,7 @@ update msg model =
                         )
                 AckReceived newMsg ->
                         ( 
-                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg, verified = True, fingerprint = model.fingerprint, timestamp = Time.millisToPosix 0, id = 0} ] }, 
+                        { model | msgs = model.msgs ++ [ { author = model.username, content = newMsg.content, verified = newMsg.verified, fingerprint = model.fingerprint, timestamp = newMsg.timestamp, id = newMsg.id} ] }, 
                         scrollChat
                         )
                 HistoryUpdate history ->
@@ -495,9 +502,13 @@ historyDecoder =
                 (Decode.field "messages" (Decode.list messageHelperDecoder))
                 (Decode.field "name" Decode.string)
 
-ackDecoder : Decoder String
+ackDecoder : Decoder MessageAck
 ackDecoder =
-        Decode.field "content" Decode.string
+        Decode.map4 MessageAck
+                (Decode.field "content" Decode.string)
+                (Decode.field "verified" Decode.bool)
+                (Decode.field "timestamp" (Decode.map Time.millisToPosix Decode.int))
+                (Decode.field "id" Decode.int)
 
 registerAckDecoder : Decoder RegisterAckMsg
 registerAckDecoder =

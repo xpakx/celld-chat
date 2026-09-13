@@ -57,6 +57,11 @@ type alias RegisterAckMsg = {
         fingerprint : String
         }
 
+type alias MessageEditMsg = {
+        id : Int,
+        content : String
+        }
+
 type alias Friend = {
         localName : Maybe String,
         fingerprint : String
@@ -87,6 +92,7 @@ type Msg
     | OnMsgClick Int
     | MessageDeleted Int
     | RemoveFriend String
+    | MessageEdited MessageEditMsg
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -412,6 +418,16 @@ update msg model =
                         ( { model | msgs = List.filter (\item -> item.id /= id) model.msgs }, Cmd.none )
                 RemoveFriend fingerprint ->
                         ( { model | friends = List.filter (\item -> item.fingerprint /= fingerprint) model.friends }, removeFriend fingerprint )
+                MessageEdited editedMsg ->
+                        ( {
+                                model |
+                                        msgs = List.map 
+                                                (\item -> if editedMsg.id == item.id then
+                                                        { item | content = editedMsg.content }
+                                                else 
+                                                        item
+                                                ) model.msgs 
+                        }, Cmd.none )
 
 initialModel : Model
 initialModel = {
@@ -488,6 +504,12 @@ messageDeletionDecoder : Decoder Int
 messageDeletionDecoder =
         Decode.field "id" Decode.int
 
+messageEditDecoder : Decoder MessageEditMsg
+messageEditDecoder =
+        Decode.map2 MessageEditMsg
+                (Decode.field "id" Decode.int)
+                (Decode.field "content" Decode.string)
+
 routeByMessageType : String -> String -> Msg
 routeByMessageType msgType rawJson =
         case msgType of
@@ -505,6 +527,9 @@ routeByMessageType msgType rawJson =
                         Err _ -> SystemMessage "error" 
                 "deleted" -> case Decode.decodeString messageDeletionDecoder rawJson of
                         Ok id -> MessageDeleted id
+                        Err _ -> SystemMessage "error" 
+                "edited" -> case Decode.decodeString messageEditDecoder rawJson of
+                        Ok content -> MessageEdited content
                         Err _ -> SystemMessage "error" 
                 _ -> SystemMessage "error" 
 

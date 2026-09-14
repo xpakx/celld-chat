@@ -7,6 +7,7 @@ import Html.Events exposing (..)
 import Json.Decode as Decode exposing (Decoder, Value)
 import Json.Encode as Encode
 import Browser.Dom as Dom
+import Browser.Events
 import Task
 import Time exposing (Posix, Zone)
 import Markdown.Parser
@@ -105,6 +106,7 @@ type Msg
     | RemoveFriend String
     | MessageEdited MessageEditMsg
     | ToggleDropdown Int
+    | EditCancel
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -466,6 +468,8 @@ update msg model =
                                 ({ model | openMsgMenu = Just id }, Cmd.none)
                 OnMsgClickEdit id ->
                         ( { model | openMsgMenu = Nothing, editingItem = Just id }, Cmd.none )
+                EditCancel ->
+                        ( { model | editingItem = Nothing }, Cmd.none )
 
 initialModel : Model
 initialModel = {
@@ -499,11 +503,23 @@ init  flags =
                 ( {initialModel | channels = flags.channels, zone = zone, friends = flags.friends}, Cmd.none )
 
 
+globalKeyDecoder : Decode.Decoder Msg
+globalKeyDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Escape" then
+                    Decode.succeed EditCancel
+                else
+                    Decode.fail "Nothing"
+            )
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
         Sub.batch [
         getMessage handleIncomingMsg,
-        changeStatus StatusChanged
+        changeStatus StatusChanged,
+        Browser.Events.onKeyDown globalKeyDecoder
         ]
 
 typeDecoder : Decoder String

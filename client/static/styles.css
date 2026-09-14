@@ -240,6 +240,10 @@ button:active {
 	overflow-wrap: anywhere;
 }
 
+.message.edited-msg .msg-content {
+	background: #cea5b5;
+}
+
 .msg-data {
 	display: flex;
 	flex-direction: row;

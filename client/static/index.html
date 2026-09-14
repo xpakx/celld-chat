@@ -100,6 +100,12 @@
 	    }
     });
 
+    app.ports.editMessage.subscribe(function([messageId, content]) {
+	    if (ws.readyState == WebSocket.OPEN) {
+		broadcastEdition(ws, messageId, content, identity);
+	    }
+    });
+
     app.ports.removeFriend.subscribe(function(friendFingerprint) {
 	    // TODO
 	    console.log(friendFingerprint);
@@ -235,6 +241,34 @@
 		    id: msgId,
 		    timestamp: timestamp,
 		    signature: sig,
+	    };
+	    const finPayload = JSON.stringify(msgReq);
+	    ws.send(finPayload);
+    }
+
+
+    async function broadcastEdition(ws, msgId, content, identity) {
+	    const timestamp = Date.now();
+	    const payload = JSON.stringify({
+		    msg: msgId,
+		    timestamp: timestamp,
+		    content: content,
+		    action: "EDIT",
+	    });
+	    const signatureBuffer = await window.crypto.subtle.sign(
+		    { name: "ECDSA", hash: { name: "SHA-256" } },
+		    identity.keyPair.privateKey,
+		    new TextEncoder().encode(payload)
+	    );
+	    const sig = btoa(String.fromCharCode(
+		    ...new Uint8Array(signatureBuffer))
+	    );
+	    let msgReq = {
+		    type: 'edit',
+		    signature: sig,
+		    timestamp: timestamp,
+		    id: msgId,
+		    newMsg: content
 	    };
 	    const finPayload = JSON.stringify(msgReq);
 	    ws.send(finPayload);

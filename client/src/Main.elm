@@ -20,6 +20,7 @@ port newChannel : String -> Cmd msg
 port removeChannel : String -> Cmd msg
 port deleteMessage : Int -> Cmd msg
 port removeFriend : String -> Cmd msg
+port editMessage : (Int, String) -> Cmd msg
 
 port getMessage : (String -> msg) -> Sub msg
 port changeStatus : (String -> msg) -> Sub msg
@@ -36,7 +37,8 @@ type alias Model = {
         showNewChannel : Bool,
         zone : Zone,
         friends : List Friend,
-        openMsgMenu : Maybe Int
+        openMsgMenu : Maybe Int,
+        editingItem : Maybe Int
         }
 
 type alias ChatMessage = {
@@ -234,13 +236,15 @@ viewMessage model msg =
             authored = msg.fingerprint == model.fingerprint
             friend = findFriend msg.fingerprint model.friends
             dropdownOpen = model.openMsgMenu == Just msg.id
+            edited = model.editingItem == Just msg.id
         in
                 Html.div [
                         classList 
                         [
                                 ("message", True), 
                                 ("authored", authored),
-                                ("system", msg.fingerprint == "system")
+                                ("system", msg.fingerprint == "system"),
+                                ("edited-msg", edited)
                         ]
                 ] [ 
                         div [ class "msg-data" ] [
@@ -359,10 +363,12 @@ update msg model =
                                 (model, Cmd.none)
                         else
                                 (
-                                { model 
-                                | inputMsg = ""
-                                },
-                                sendMessage model.inputMsg
+                                { model | inputMsg = "", editingItem = Nothing },
+                                case model.editingItem of 
+                                        Just itemId ->
+                                                editMessage ( itemId, model.inputMsg )
+                                        Nothing ->
+                                                sendMessage model.inputMsg
                                 )
                 MessageReceived newMsg ->
                         ( 
@@ -459,7 +465,7 @@ update msg model =
                         else
                                 ({ model | openMsgMenu = Just id }, Cmd.none)
                 OnMsgClickEdit id ->
-                        ( { model | openMsgMenu = Nothing }, Cmd.none )
+                        ( { model | openMsgMenu = Nothing, editingItem = Just id }, Cmd.none )
 
 initialModel : Model
 initialModel = {
@@ -474,7 +480,8 @@ initialModel = {
         showNewChannel = False,
         zone = Time.utc,
         friends = [],
-        openMsgMenu = Nothing
+        openMsgMenu = Nothing,
+        editingItem = Nothing
         }
 
 type alias Flags =

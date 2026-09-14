@@ -35,7 +35,8 @@ type alias Model = {
         currentChannel : String,
         showNewChannel : Bool,
         zone : Zone,
-        friends : List Friend
+        friends : List Friend,
+        openMsgMenu : Maybe Int
         }
 
 type alias ChatMessage = {
@@ -97,9 +98,11 @@ type Msg
     | FocusResult (Result Dom.Error ())
     | RemoveChannel String
     | OnMsgClick Int
+    | OnMsgClickEdit Int
     | MessageDeleted Int
     | RemoveFriend String
     | MessageEdited MessageEditMsg
+    | ToggleDropdown Int
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -209,7 +212,7 @@ viewChat : Model -> Html Msg
 viewChat model =
     main_ [ class "chat" ] [ 
             viewHeader model.statusClass model.status model.currentChannel,
-            viewMessages model.fingerprint model.zone model.friends model.msgs,
+            viewMessages model,
             viewControls model.inputMsg
         ]
 
@@ -220,16 +223,17 @@ viewHeader statusClass status currentChannel =
                 div [class statusClass] [text status]
         ] 
 
-viewMessages : String -> Zone -> List Friend -> List ChatMessage -> Html Msg
-viewMessages userFingerprint zone friends msgs =
+viewMessages : Model -> Html Msg
+viewMessages model =
         section [ class "messages", id "log" ]  
-                (List.map (viewMessage userFingerprint zone friends) msgs)
+                (List.map (viewMessage model) model.msgs)
 
-viewMessage : String -> Zone -> List Friend -> ChatMessage -> Html Msg
-viewMessage userFingerprint zone friends msg =
+viewMessage : Model -> ChatMessage -> Html Msg
+viewMessage model msg =
         let 
-            authored = msg.fingerprint == userFingerprint
-            friend = findFriend msg.fingerprint friends
+            authored = msg.fingerprint == model.fingerprint
+            friend = findFriend msg.fingerprint model.friends
+            dropdownOpen = model.openMsgMenu == Just msg.id
         in
                 Html.div [
                         classList 
@@ -246,11 +250,6 @@ viewMessage userFingerprint zone friends msg =
                                         Nothing ->
                                                 text ""
                                 ,
-                                if authored then
-                                        button [ class "inline-btn", onClick (OnMsgClick msg.id) ] [ text "x" ]
-                                else
-                                        text ""
-                                ,
                                 div [ class "msg-author" ] [
                                         case friend of
                                                 Just f ->
@@ -262,10 +261,17 @@ viewMessage userFingerprint zone friends msg =
                                                 Nothing ->
                                                     text msg.author
                                 ],
-                                div [ class "msg-date" ] [ text (formatDate zone msg.timestamp) ]
+                                div [ class "msg-date" ] [ text (formatDate model.zone msg.timestamp) ]
 
                         ],
-                        viewMsgContent msg.content
+                        viewMsgContent msg.content (if authored then Just msg.id else Nothing),
+                        if dropdownOpen && authored then
+                                div [ class "dropdown-menu" ] [
+                                        button [ class "inline-btn", onClick (OnMsgClick msg.id) ] [ text "x" ],
+                                        button [ class "inline-btn", onClick (OnMsgClickEdit msg.id) ] [ text "e" ]
+                                ]
+                        else
+                                text ""
                 ]
 
 formatDate : Zone -> Posix -> String
@@ -304,8 +310,8 @@ onBlurWithContent toMsg =
         on "blur"
                 (Decode.map toMsg (Decode.at ["target", "textContent"] Decode.string))
 
-viewMsgContent : String -> Html msg
-viewMsgContent markdownInput =
+viewMsgContent : String -> Maybe Int -> Html Msg
+viewMsgContent markdownInput id =
         let
             renderedHtml =
                     markdownInput
@@ -319,7 +325,14 @@ viewMsgContent markdownInput =
         in
         case renderedHtml of
                 Ok elements ->
-                        div [class "msg-content"] elements
+                        div (
+                                [class "msg-content"] ++
+                                case id  of
+                                        Just msgId ->
+                                                [onClick (ToggleDropdown msgId)]
+                                        Nothing ->
+                                                []
+                        ) elements
                 Err _ ->
                         div [class "msg-content"] [text ""]
 
@@ -425,7 +438,7 @@ update msg model =
                 RemoveChannel name ->
                         ( { model | channels = List.filter (\item -> item /= name) model.channels }, removeChannel name )
                 OnMsgClick id ->
-                        ( model, deleteMessage id )
+                        ( { model | openMsgMenu = Nothing }, deleteMessage id )
                 MessageDeleted id ->
                         ( { model | msgs = List.filter (\item -> item.id /= id) model.msgs }, Cmd.none )
                 RemoveFriend fingerprint ->
@@ -440,6 +453,13 @@ update msg model =
                                                         item
                                                 ) model.msgs 
                         }, Cmd.none )
+                ToggleDropdown id ->
+                        if model.openMsgMenu == Just id then
+                                ({ model | openMsgMenu = Nothing }, Cmd.none)
+                        else
+                                ({ model | openMsgMenu = Just id }, Cmd.none)
+                OnMsgClickEdit id ->
+                        ( { model | openMsgMenu = Nothing }, Cmd.none )
 
 initialModel : Model
 initialModel = {
@@ -453,7 +473,8 @@ initialModel = {
         currentChannel = "Global",
         showNewChannel = False,
         zone = Time.utc,
-        friends = []
+        friends = [],
+        openMsgMenu = Nothing
         }
 
 type alias Flags =

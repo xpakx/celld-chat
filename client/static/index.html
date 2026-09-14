@@ -107,8 +107,7 @@
     });
 
     app.ports.removeFriend.subscribe(function(friendFingerprint) {
-	    // TODO
-	    console.log(friendFingerprint);
+	    removeFriend(friendFingerprint);
     });
 
     function openIndexedDB() {
@@ -322,7 +321,6 @@
 	    tx.objectStore("channels").delete(channel);
     }
 
-
     async function getFriends() {
 	    const database = await openIndexedDB();
 	    const tx = database.transaction(["friends"], "readonly");
@@ -346,6 +344,12 @@
 		    fingerprint: fingerprint,
 		    addedAt: Date.now(),
 	    });
+    }
+
+    async function removeFriend(fingerprint) {
+	    const db = await openIndexedDB();
+	    const tx = db.transaction('friends', 'readwrite');
+	    tx.objectStore("friends").delete(fingerprint);
     }
 })();
   </script>

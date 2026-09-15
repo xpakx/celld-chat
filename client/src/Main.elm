@@ -21,6 +21,7 @@ port newChannel : String -> Cmd msg
 port removeChannel : String -> Cmd msg
 port deleteMessage : Int -> Cmd msg
 port removeFriend : String -> Cmd msg
+port addFriend : String -> Cmd msg
 port editMessage : (Int, String) -> Cmd msg
 
 port getMessage : (String -> msg) -> Sub msg
@@ -107,6 +108,7 @@ type Msg
     | MessageEdited MessageEditMsg
     | ToggleDropdown Int
     | EditCancel
+    | OnBefriendClick String
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -271,7 +273,7 @@ viewMessage model msg =
 
                         ],
                         viewMsgContent msg.content msg.id,
-                        viewMsgMenu dropdownOpen authored msg.id
+                        viewMsgMenu dropdownOpen authored friend msg.id msg.fingerprint
                 ]
 
 formatDate : Zone -> Posix -> String
@@ -332,15 +334,25 @@ viewMsgContent markdownInput id =
                 Err _ ->
                         div [class "msg-content"] [text ""]
 
-viewMsgMenu : Bool -> Bool -> Int -> Html Msg
-viewMsgMenu dropdownOpen authored msgId =
-        if dropdownOpen && authored then
-                div [ class "dropdown-menu" ] [
-                        button [ class "inline-btn", onClick (OnMsgClick msgId) ] [ text "x" ],
-                        button [ class "inline-btn", onClick (OnMsgClickEdit msgId) ] [ text "e" ]
-                ]
-        else
-                text ""
+viewMsgMenu : Bool -> Bool -> Maybe Friend -> Int -> String -> Html Msg
+viewMsgMenu dropdownOpen authored friend msgId fingerprint =
+        div [ class "dropdown-menu" ] (
+                if dropdownOpen && authored then
+                        [
+                                button [ class "inline-btn", onClick (OnMsgClick msgId) ] [ text "x" ],
+                                button [ class "inline-btn", onClick (OnMsgClickEdit msgId) ] [ text "e" ]
+                        ]
+                else
+                        []
+                ++
+                case friend of
+                        Just f ->
+                                []
+                        Nothing ->
+                                [
+                                        button [ class "inline-btn", onClick (OnBefriendClick fingerprint) ] [ text "+" ]
+                                ]
+                )
 
 
 scrollChat : Cmd Msg
@@ -470,6 +482,8 @@ update msg model =
                         ( { model | openMsgMenu = Nothing, editingItem = Just id }, Cmd.none )
                 EditCancel ->
                         ( { model | editingItem = Nothing }, Cmd.none )
+                OnBefriendClick fingerprint ->
+                        ( { model | friends = model.friends ++ [{localName = Nothing, fingerprint = fingerprint}] }, addFriend fingerprint )
 
 initialModel : Model
 initialModel = {

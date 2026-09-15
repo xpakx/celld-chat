@@ -110,6 +110,10 @@
 	    removeFriend(friendFingerprint);
     });
 
+    app.ports.addFriend.subscribe(function(friendFingerprint) {
+	    saveFriend(friendFingerprint, null);
+    });
+
     function openIndexedDB() {
 	if (db) return Promise.resolve(db);
 

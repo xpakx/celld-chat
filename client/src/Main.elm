@@ -533,15 +533,21 @@ type alias Flags =
     { 
             channels : List String,
             timezoneOffset : Int,
-            friends : List Friend
+            friends : List Friend,
+            name : Maybe String
     }
 
 init: Flags -> (Model, Cmd Msg)
 init  flags = 
         let 
                 zone = Time.customZone flags.timezoneOffset []
+                name = case flags.name of
+                        Just username ->
+                                username
+                        Nothing ->
+                                "unknown"
         in
-                ( {initialModel | channels = flags.channels, zone = zone, friends = flags.friends}, Cmd.none )
+                ( {initialModel | channels = flags.channels, zone = zone, friends = flags.friends, username = name}, Cmd.none )
 
 
 globalKeyDecoder : Decode.Decoder Msg

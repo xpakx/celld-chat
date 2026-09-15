@@ -20,7 +20,7 @@
     const channels = await getChannelNames();
     const friends = await getFriends();
     const timezoneOffset = -new Date().getTimezoneOffset();
-    console.log(friends);
+    const name = await readName();
 
     var app = Elm.Main.init({
       node: document.getElementById('app'),
@@ -28,11 +28,11 @@
 	      channels: channels,
 	      timezoneOffset: timezoneOffset,
 	      friends : friends,
+	      name: name,
       }
     });
 
     const identity = await getIdentity();
-    const name = await readName();
     const WS_URL = "ws://localhost:8080/ws"; 
     app.ports.getMessage.send("Connecting to " + WS_URL + "...");
     let ws = connectWS();
@@ -75,7 +75,6 @@
     });
 
     app.ports.changeUsername.subscribe(function(username) {
-	    console.log(username);
 	    saveName(username);
     });
 
@@ -115,7 +114,6 @@
     });
 
     app.ports.updateFriend.subscribe(function([friendFingerprint, newName]) {
-	    console.log(friendFingerprint, newName)
 	    updateFriendName(friendFingerprint, newName);
     });
 

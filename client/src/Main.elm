@@ -270,14 +270,8 @@ viewMessage model msg =
                                 div [ class "msg-date" ] [ text (formatDate model.zone msg.timestamp) ]
 
                         ],
-                        viewMsgContent msg.content (if authored then Just msg.id else Nothing),
-                        if dropdownOpen && authored then
-                                div [ class "dropdown-menu" ] [
-                                        button [ class "inline-btn", onClick (OnMsgClick msg.id) ] [ text "x" ],
-                                        button [ class "inline-btn", onClick (OnMsgClickEdit msg.id) ] [ text "e" ]
-                                ]
-                        else
-                                text ""
+                        viewMsgContent msg.content msg.id,
+                        viewMsgMenu dropdownOpen authored msg.id
                 ]
 
 formatDate : Zone -> Posix -> String
@@ -316,7 +310,7 @@ onBlurWithContent toMsg =
         on "blur"
                 (Decode.map toMsg (Decode.at ["target", "textContent"] Decode.string))
 
-viewMsgContent : String -> Maybe Int -> Html Msg
+viewMsgContent : String -> Int -> Html Msg
 viewMsgContent markdownInput id =
         let
             renderedHtml =
@@ -331,16 +325,22 @@ viewMsgContent markdownInput id =
         in
         case renderedHtml of
                 Ok elements ->
-                        div (
-                                [class "msg-content"] ++
-                                case id  of
-                                        Just msgId ->
-                                                [onClick (ToggleDropdown msgId)]
-                                        Nothing ->
-                                                []
-                        ) elements
+                        div [
+                                class "msg-content",
+                                onClick (ToggleDropdown id)
+                        ] elements
                 Err _ ->
                         div [class "msg-content"] [text ""]
+
+viewMsgMenu : Bool -> Bool -> Int -> Html Msg
+viewMsgMenu dropdownOpen authored msgId =
+        if dropdownOpen && authored then
+                div [ class "dropdown-menu" ] [
+                        button [ class "inline-btn", onClick (OnMsgClick msgId) ] [ text "x" ],
+                        button [ class "inline-btn", onClick (OnMsgClickEdit msgId) ] [ text "e" ]
+                ]
+        else
+                text ""
 
 
 scrollChat : Cmd Msg

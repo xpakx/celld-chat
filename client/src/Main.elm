@@ -337,21 +337,24 @@ viewMsgContent markdownInput id =
 viewMsgMenu : Bool -> Bool -> Maybe Friend -> Int -> String -> Html Msg
 viewMsgMenu dropdownOpen authored friend msgId fingerprint =
         div [ class "dropdown-menu" ] (
-                if dropdownOpen && authored then
-                        [
-                                button [ class "inline-btn", onClick (OnMsgClick msgId) ] [ text "x" ],
-                                button [ class "inline-btn", onClick (OnMsgClickEdit msgId) ] [ text "e" ]
-                        ]
+                if dropdownOpen then
+                        if authored then
+                                [
+                                        button [ class "inline-btn", onClick (OnMsgClick msgId) ] [ text "x" ],
+                                        button [ class "inline-btn", onClick (OnMsgClickEdit msgId) ] [ text "e" ]
+                                ]
+                        else
+                                []
+                        ++
+                        case friend of
+                                Just f ->
+                                        []
+                                Nothing ->
+                                        [
+                                                button [ class "inline-btn", onClick (OnBefriendClick fingerprint) ] [ text "+" ]
+                                        ]
                 else
                         []
-                ++
-                case friend of
-                        Just f ->
-                                []
-                        Nothing ->
-                                [
-                                        button [ class "inline-btn", onClick (OnBefriendClick fingerprint) ] [ text "+" ]
-                                ]
                 )
 
 
@@ -483,7 +486,7 @@ update msg model =
                 EditCancel ->
                         ( { model | editingItem = Nothing }, Cmd.none )
                 OnBefriendClick fingerprint ->
-                        ( { model | friends = model.friends ++ [{localName = Nothing, fingerprint = fingerprint}] }, addFriend fingerprint )
+                        ( { model | openMsgMenu = Nothing, friends = model.friends ++ [{localName = Nothing, fingerprint = fingerprint}] }, addFriend fingerprint )
 
 initialModel : Model
 initialModel = {

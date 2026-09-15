@@ -20,9 +20,10 @@ port switchChannel : String -> Cmd msg
 port newChannel : String -> Cmd msg
 port removeChannel : String -> Cmd msg
 port deleteMessage : Int -> Cmd msg
+port editMessage : (Int, String) -> Cmd msg
 port removeFriend : String -> Cmd msg
 port addFriend : String -> Cmd msg
-port editMessage : (Int, String) -> Cmd msg
+port updateFriend : (String, Maybe String) -> Cmd msg
 
 port getMessage : (String -> msg) -> Sub msg
 port changeStatus : (String -> msg) -> Sub msg
@@ -109,6 +110,7 @@ type Msg
     | ToggleDropdown Int
     | EditCancel
     | OnBefriendClick String
+    | OnFriendBlurred String String
 
 onEnter : Msg -> Attribute Msg
 onEnter msg =
@@ -296,13 +298,18 @@ viewControls inputMsg =
 
 viewFriend : Friend -> Html Msg
 viewFriend friend =
-        div [class "friend"] [
-                case friend.localName of
-                        Just name ->
-                            text name
-                        Nothing ->
-                            text "unknown"
-                ,
+        div [ class "friend" ] [
+                span [
+                        onBlurWithContent (OnFriendBlurred friend.fingerprint),
+                        onEnterChannel (OnFriendBlurred friend.fingerprint),
+                        attribute "contenteditable" "true"
+                ] [
+                        case friend.localName of
+                                Just name ->
+                                    text name
+                                Nothing ->
+                                    text "unknown"
+                ],
                 div [] [ text ("(" ++ friend.fingerprint ++ ")") ],
                 button [onClick (RemoveFriend friend.fingerprint)] [text "del"]
         ]
@@ -487,6 +494,23 @@ update msg model =
                         ( { model | editingItem = Nothing }, Cmd.none )
                 OnBefriendClick fingerprint ->
                         ( { model | openMsgMenu = Nothing, friends = model.friends ++ [{localName = Nothing, fingerprint = fingerprint}] }, addFriend fingerprint )
+                OnFriendBlurred fingerprint newName ->
+                        let 
+                            trimmedName = String.trim newName
+                            name = if String.isEmpty trimmedName || trimmedName == "unknown" then
+                                            Nothing
+                                    else
+                                            Just (String.trim newName)
+                        in
+                                ( { model |
+
+                                        friends = List.map 
+                                                (\item -> if item.fingerprint == fingerprint then
+                                                        { item | localName = name }
+                                                else 
+                                                        item
+                                                ) model.friends 
+                                }, updateFriend (fingerprint, name))
 
 initialModel : Model
 initialModel = {

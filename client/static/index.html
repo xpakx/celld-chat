@@ -114,6 +114,11 @@
 	    saveFriend(friendFingerprint, null);
     });
 
+    app.ports.updateFriend.subscribe(function([friendFingerprint, newName]) {
+	    console.log(friendFingerprint, newName)
+	    updateFriendName(friendFingerprint, newName);
+    });
+
     function openIndexedDB() {
 	if (db) return Promise.resolve(db);
 
@@ -354,6 +359,22 @@
 	    const db = await openIndexedDB();
 	    const tx = db.transaction('friends', 'readwrite');
 	    tx.objectStore("friends").delete(fingerprint);
+    }
+
+    async function updateFriendName(fingerprint, newName) {
+        const db = await openIndexedDB();
+        const tx = db.transaction('friends', 'readwrite');
+        const store = tx.objectStore("friends");
+
+        const request = store.get(fingerprint);
+        
+        request.onsuccess = () => {
+            const friend = request.result;
+            if (friend) {
+                friend.name = newName;
+                store.put(friend);
+            }
+        };
     }
 })();
   </script>

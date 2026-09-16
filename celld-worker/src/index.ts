@@ -14,7 +14,7 @@ export default {
 			const roomId = env.CHAT_ROOM.idFromName(roomName);
 			const stub = env.CHAT_ROOM.get(roomId);
 			return stub.fetch(request);
-		} else if (requestUrl.pathname === "/profile") {
+		} else if (requestUrl.pathname === "/profile" || requestUrl.pathname === "/profile/prepare") {
 			const profileName = requestUrl.searchParams.get("name");
 			if (!profileName) return new Response("Not found", { status: 404 });
 			const profileId = env.PROFILE.idFromName(profileName);
@@ -432,13 +432,43 @@ export class Profile extends DurableObject {
 					name TEXT,
 				)
 			`);
+			this.ctx.storage.sql.exec(`
+				CREATE TABLE IF NOT EXISTS tokens (
+				    token TEXT PRIMARY KEY,
+				    created_at INTEGER NOT NULL,
+				    expires_at INTEGER NOT NULL,
+				    used INTEGER DEFAULT 0
+				)
+			`);
 		});
 	}
+
 
 	async fetch(request: Request): Promise<Response> {
-		return new Response(null, {
-			status: 404,
-		});
+		const url = new URL(request.url);
+
+		if (url.pathname === "/profile/prepare") {
+		    const token = await this.prepareToken();
+		    return Response.json({ token });
+		}
+
+		return new Response("Not Found", { status: 404 });
 	}
 
+	async prepareToken(ttlSeconds = 60): Promise<string> {
+		const token = crypto.randomUUID();
+		const now = Math.floor(Date.now() / 1000);
+		const expiresAt = now + ttlSeconds;
+
+		this.ctx.storage.sql.exec(
+			`INSERT INTO tokens (token, created_at, expires_at) VALUES (?, ?, ?)`,
+			token,
+			now,
+			expiresAt
+		);
+
+		this.ctx.storage.sql.exec(`DELETE FROM tokens WHERE expires_at < ? OR used = 1`, now);
+
+		return token;
+	}
 }

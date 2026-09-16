@@ -485,7 +485,7 @@ export class Profile extends DurableObject {
 		}
 
 		const profile = this.ctx.storage.sql.exec(
-			`SELECT id, name, pubJwk FROM profile LIMIT 1`
+			`SELECT pubJwk FROM profile LIMIT 1`
 		).one();
 
 		if (!profile) {
@@ -497,8 +497,8 @@ export class Profile extends DurableObject {
 			return new Response("Invalid signature", { status: 401 });
 		}
 
-		// TODO
 		if (payload.type === "get_profile") {
+			return Response.json(this.getProfile());
 		}
 		return new Response("No such action!", { status: 404 });
 	}
@@ -547,6 +547,36 @@ export class Profile extends DurableObject {
 			dataToVerify
 		);
 		return isValid;
+	}
+
+	private getProfile() {
+		const profile = this.ctx.storage.sql.exec(
+			`SELECT name FROM profile LIMIT 1`
+		).one();
+
+		const friends = this.ctx.storage.sql.exec(
+			`SELECT name, fingerprint FROM friends`
+		).toArray().map((f) => {
+			return {
+				name: f.name,
+				fingerprint: f.fingerprint,
+				// addedAt
+			}
+		});
+
+		const channels = this.ctx.storage.sql.exec(
+			`SELECT name FROM channels`
+		).toArray().map((f) => {
+			return {
+				name: f.name,
+			}
+		});
+
+		return {
+			name: profile.name ?? null,
+			friends,
+			channels,
+		};
 	}
 }
 

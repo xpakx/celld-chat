@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 
 export interface Env {
 	CHAT_ROOM: DurableObjectNamespace;
+	PROFILE: DurableObjectNamespace;
 }
 
 export default {
@@ -12,6 +13,12 @@ export default {
 			const roomName = requestUrl.searchParams.get("room") || "global-chat";
 			const roomId = env.CHAT_ROOM.idFromName(roomName);
 			const stub = env.CHAT_ROOM.get(roomId);
+			return stub.fetch(request);
+		} else if (requestUrl.pathname === "/profile") {
+			const profileName = requestUrl.searchParams.get("name");
+			if (!profileName) return new Response("Not found", { status: 404 });
+			const profileId = env.PROFILE.idFromName(profileName);
+			const stub = env.PROFILE.get(profileId);
 			return stub.fetch(request);
 		}
 		return new Response("Not found", { status: 404 });
@@ -396,4 +403,42 @@ function extractNameFromSubprotocols(header: string | null): string | undefined 
 	const protocols = header.split(",").map((p) => p.trim());
 	const bearerProtocol = protocols.find((p) => p.startsWith("bearer."));
 	return bearerProtocol ? bearerProtocol.replace("bearer.", "") : undefined;
+}
+
+
+
+export class Profile extends DurableObject {
+	constructor(ctx: DurableObjectState, env: Env) {
+		super(ctx, env);
+
+		this.ctx.blockConcurrencyWhile(async () => {
+			this.ctx.storage.sql.exec(`
+				CREATE TABLE IF NOT EXISTS profile (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					name TEXT,
+					fingerprint TEXT
+				)
+			`);
+			this.ctx.storage.sql.exec(`
+				CREATE TABLE IF NOT EXISTS friends (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					name TEXT,
+					fingerprint TEXT,
+				)
+			`);
+			this.ctx.storage.sql.exec(`
+				CREATE TABLE IF NOT EXISTS channels (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					name TEXT,
+				)
+			`);
+		});
+	}
+
+	async fetch(request: Request): Promise<Response> {
+		return new Response(null, {
+			status: 404,
+		});
+	}
+
 }

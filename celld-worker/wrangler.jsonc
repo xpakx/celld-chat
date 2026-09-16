@@ -17,6 +17,10 @@
 			{
 				"name": "CHAT_ROOM",
 				"class_name": "ChatRoom"
+			},
+			{
+				"name": "PROFILE",
+				"class_name": "Profile"
 			}
 		]
 	},
@@ -29,6 +33,7 @@
 		}
 	}*/
 	"migrations": [
-		{ "tag": "v1", "new_sqlite_classes": ["ChatRoom"] }
+		{ "tag": "v1", "new_sqlite_classes": ["ChatRoom"] },
+		{ "tag": "v2", "new_sqlite_classes": ["Profile"] },
 	]
 }

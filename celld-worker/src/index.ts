@@ -499,6 +499,8 @@ export class Profile extends DurableObject {
 
 		if (payload.type === "get_profile") {
 			return Response.json(this.getProfile());
+		} else if (payload.type === "save_profile") {
+			return Response.json(this.saveProfile(payload));
 		}
 		return new Response("No such action!", { status: 404 });
 	}
@@ -578,12 +580,47 @@ export class Profile extends DurableObject {
 			channels,
 		};
 	}
+
+	private saveProfile(payload: SaveProfileReq) {
+		this.ctx.storage.sql.exec(
+			`UPDATE profile SET name = ?`,
+				payload.name
+		);
+
+		this.ctx.storage.sql.exec(`DELETE FROM friends`);
+		for (const friend of payload.friends ?? []) {
+			this.ctx.storage.sql.exec(
+				`INSERT INTO friends (name, fingerprint) VALUES (?, ?)`,
+				friend.name,
+				friend.fingerprint
+			);
+		}
+
+		this.ctx.storage.sql.exec(`DELETE FROM channels`);
+		for (const channel of payload.channels ?? []) {
+			this.ctx.storage.sql.exec(
+				`INSERT INTO channels (name) VALUES (?)`,
+				channel.name
+			);
+		}
+
+		return { success: true };
+	}
 }
 
-type ProfileAction = GetProfileReq;
+type ProfileAction = GetProfileReq | SaveProfileReq;
 
 interface GetProfileReq {
 	type: "get_profile",
 	signature: string
 	token: string,
+}
+
+interface SaveProfileReq {
+	type: "save_profile",
+	signature: string
+	token: string,
+	name: string,
+	friends: Array<{ name: string; fingerprint: string }>;
+	channels: Array<{ name: string }>;
 }

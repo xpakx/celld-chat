@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { request } from "node:http";
 
 export interface Env {
 	CHAT_ROOM: DurableObjectNamespace;
@@ -416,20 +417,20 @@ export class Profile extends DurableObject {
 				CREATE TABLE IF NOT EXISTS profile (
 					id INTEGER PRIMARY KEY AUTOINCREMENT,
 					name TEXT,
-					fingerprint TEXT
+					pubJwk TEXT
 				)
 			`);
 			this.ctx.storage.sql.exec(`
 				CREATE TABLE IF NOT EXISTS friends (
 					id INTEGER PRIMARY KEY AUTOINCREMENT,
 					name TEXT,
-					fingerprint TEXT,
+					fingerprint TEXT
 				)
 			`);
 			this.ctx.storage.sql.exec(`
 				CREATE TABLE IF NOT EXISTS channels (
 					id INTEGER PRIMARY KEY AUTOINCREMENT,
-					name TEXT,
+					name TEXT
 				)
 			`);
 			this.ctx.storage.sql.exec(`
@@ -443,15 +444,20 @@ export class Profile extends DurableObject {
 		});
 	}
 
-
 	async fetch(request: Request): Promise<Response> {
 		const url = new URL(request.url);
 
-		if (url.pathname === "/profile/prepare") {
+		if (request.method === "POST" && url.pathname === "/profile/prepare") {
 		    const token = await this.prepareToken();
 		    return Response.json({ token });
+		} else if (request.method === "POST" && url.pathname === "/profile") {
+			try {
+				const payload = (await request.json()) as ProfileAction;
+				return await this.doAction(payload);
+			} catch {
+				return new Response("Invalid JSON payload", { status: 400 });
+			}
 		}
-
 		return new Response("Not Found", { status: 404 });
 	}
 
@@ -471,4 +477,83 @@ export class Profile extends DurableObject {
 
 		return token;
 	}
+
+	async doAction(payload: ProfileAction) {
+		const isValid = this.consumeToken(payload.token);
+		if (!isValid) {
+			return new Response("Invalid token", { status: 401 });
+		}
+
+		const profile = this.ctx.storage.sql.exec(
+			`SELECT id, name, pubJwk FROM profile LIMIT 1`
+		).one();
+
+		if (!profile) {
+			return new Response("No such user!", { status: 404 });
+		}
+
+		const isVerified = await this.verifySignature(payload, profile.pubJwk as string);
+		if (!isVerified) {
+			return new Response("Invalid signature", { status: 401 });
+		}
+
+		// TODO
+		if (payload.type === "get_profile") {
+		}
+		return new Response("No such action!", { status: 404 });
+	}
+
+	private consumeToken(token: string): boolean {
+		const now = Math.floor(Date.now() / 1000);
+
+		const record = this.ctx.storage.sql.exec(
+			`SELECT token FROM tokens WHERE token = ? AND used = 0 AND expires_at > ?`,
+				token,
+			now
+		).one();
+
+		if (!record) return false;
+
+		this.ctx.storage.sql.exec(
+			`UPDATE tokens SET used = 1 WHERE token = ?`,
+				token
+		);
+
+		return true;
+	}
+
+	async verifySignature(action: ProfileAction, pubJwkStr: string): Promise<boolean> {
+		const encoder = new TextEncoder();
+		const dataToVerify = encoder.encode(action.token);
+
+		const pubJwk = JSON.parse(pubJwkStr);
+		const cryptoKey = await crypto.subtle.importKey(
+			"jwk",
+			pubJwk,
+			{ name: "ECDSA", namedCurve: "P-256" },
+			false,
+			["verify"]
+		);
+
+		const signatureBytes = Uint8Array.from(
+			atob(action.signature),
+			c => c.charCodeAt(0)
+		);
+
+		const isValid = await crypto.subtle.verify(
+			{ name: "ECDSA", hash: "SHA-256" },
+			cryptoKey,
+			signatureBytes,
+			dataToVerify
+		);
+		return isValid;
+	}
+}
+
+type ProfileAction = GetProfileReq;
+
+interface GetProfileReq {
+	type: "get_profile",
+	signature: string
+	token: string,
 }
